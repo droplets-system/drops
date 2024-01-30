@@ -102,7 +102,7 @@ void drops::transfer(const name from, const name to, std::vector<uint64_t> drops
 }
 
 [[eosio::action]]
-void drops::destroy( const name owner, const vector<uint64_t> drops_ids, const bool ram_transfer, const string memo )
+uint64_t drops::destroy( const name owner, const vector<uint64_t> drops_ids, const bool ram_transfer, const string memo )
 {
     require_auth(owner);
     drops::drop_table drops(get_self(), get_self().value);
@@ -130,6 +130,8 @@ void drops::destroy( const name owner, const vector<uint64_t> drops_ids, const b
     const string transfer_memo = "Reclaimed RAM value of " + std::to_string(drops_ids.size()) + " drops(s)";
     sellram.send(get_self(), ram_sell_amount );
     transfer_act.send(get_self(), owner, ram_sell_proceeds, transfer_memo);
+
+    return 123;
 }
 
 [[eosio::action]]

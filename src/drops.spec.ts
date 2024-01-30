@@ -88,4 +88,13 @@ describe(core_contract, () => {
       created: "2024-01-29T00:00:00.000"
     });
   });
+
+  test('destroy', async () => {
+    const before = getBalance(alice);
+    await contracts.core.actions.destroy([alice, ["6530728038117924388"], false, "foo"]).send(alice);
+    const after = getBalance(alice);
+    expect(after.units.value - before.units.value).toBe(578);
+    expect(getDrops().length).toBe(9);
+    expect(getDrop(6530728038117924388n)).toBeUndefined();
+  });
 });

@@ -44,6 +44,7 @@ asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol)
     name      system_account = "eosio"_n;
     rammarket _rammarket(system_account, system_account.value);
     auto      itr = _rammarket.find(system_contract::ramcore_symbol.raw());
+    check(itr != _rammarket.end(), "RAMCORE market not found");
 
     const auto& sell_symbol  = from.symbol;
     const auto& base_symbol  = itr->base.balance.symbol;

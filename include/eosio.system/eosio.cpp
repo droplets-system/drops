@@ -51,7 +51,7 @@ public:
                 m.base.balance.amount = 129542469746;
                 m.base.balance.symbol = symbol("RAM", 0);
                 m.quote.balance.amount = 147223045946;
-                m.quote.balance.symbol = symbol("EOS", 0);
+                m.quote.balance.symbol = symbol("EOS", 4);
             });
         }
     }
