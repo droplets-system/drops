@@ -158,6 +158,14 @@ private:
    generate_return_value do_generate(name from, name to, asset quantity, std::vector<std::string> parsed);
    generate_return_value do_unbind(name from, name to, asset quantity, std::vector<std::string> parsed);
 
+   void transfer_tokens(name to, asset amount, string memo);
+   void transfer_ram(name to, asset amount, string memo);
+
+   void buy_ram_bytes(int64_t bytes);
+   void sell_ram_bytes(int64_t bytes);
+
+   drop_row modify_drop_binding(name owner, uint64_t drop_id, bool bound);
+
    std::vector<std::string> split(const std::string& str, char delim);
 };
 
