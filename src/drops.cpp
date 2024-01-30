@@ -81,7 +81,7 @@ drops::generate_return_value drops::do_generate(name from, name to, asset quanti
 
    // Return any remaining tokens to the sender
    if (remainder > 0) {
-      transfer_tokens(from, asset{remainder, EOS}, "")
+      transfer_tokens(from, asset{remainder, EOS}, "");
    }
 
    return {
@@ -104,7 +104,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   int64_t ram_purchase_amount = get_bytes_per_drop();
+   int64_t ram_purchase_amount = unbinds_itr->drops_ids.size() * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
    buy_ram_bytes(ram_purchase_amount);
@@ -245,6 +245,8 @@ drops::drop_row drops::modify_drop_binding(name owner, uint64_t drop_id, bool bo
       row.bound   = bound;
       row.created = drop.created;
    });
+
+   return drop;
 }
 
 [[eosio::action]] drops::bind_return_value drops::bind(name owner, std::vector<uint64_t> drops_ids)
