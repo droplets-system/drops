@@ -1,5 +1,5 @@
 import { TimePointSec, Name, UInt64, Asset } from "@greymass/eosio";
-import { Blockchain } from "@proton/vert"
+import { Blockchain, expectToThrow } from "@proton/vert"
 import { describe, expect, test, beforeEach } from "bun:test";
 
 // Vert EOS VM
@@ -107,4 +107,35 @@ describe(core_contract, () => {
     expect(getDrops().length).toBe(9);
     expect(getDrop(6530728038117924388n)).toBeUndefined();
   });
+
+  test('destroy::error - not found', async () => {
+    const action = contracts.core.actions.destroy([alice, ["123"], true, "memo"]).send(alice);
+    await expectToThrow(action, "eosio_assert_message: drop_id=123 not found");
+  });
+
+  test('destroy::error - must belong to owner', async () => {
+    const action = contracts.core.actions.destroy([bob, ["17855725969634623351"], true, "memo"]).send(bob);
+    await expectToThrow(action, "eosio_assert_message: drop_id=17855725969634623351 must belong to owner");
+  });
+
+  test('destroy::error - missing required authority', async () => {
+    const action = contracts.core.actions.destroy([bob, ["17855725969634623351"], true, "memo"]).send(alice);
+    await expectToThrow(action, "missing required authority bob");
+  });
 });
+
+// /**
+//  * Expect a promise to throw an error with a specific message.
+//  * @param promise - The promise to await.
+//  * @param {string} errorMsg - The error message that we expect to see.
+//  */
+// const expectToThrow = async (promise, errorMsg) => {
+//   try {
+//     await promise
+//     expectToThrow()
+//     assert.fail('Expected promise to throw an error');
+//   } catch (e) {
+//     if ( errorMsg ) assert.match(e.message, errorMsg);
+//     else assert.fail('Expected promise to throw an error');
+//   }
+// }
