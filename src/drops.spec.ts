@@ -37,6 +37,13 @@ interface Drop {
   created: string;
 }
 
+interface Transfer {
+  from: Name;
+  to: Name;
+  quantity: Asset;
+  memo: string;
+}
+
 function getBalance(account: string) {
   const scope = Name.from(account).value.value;
   const primary_key = Asset.SymbolCode.from("EOS").value.value;
@@ -78,9 +85,8 @@ describe(core_contract, () => {
     const before = getBalance(alice);
     await contracts.token.actions.transfer([alice, core_contract, "10.0000 EOS", "10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]).send(alice);
     const after = getBalance(alice);
+
     expect(before.units.value - after.units.value).toBe(5847);
-
-
     expect(getDrops().length).toBe(10);
     expect(getDrop(6530728038117924388n)).toEqual({
       seed: "6530728038117924388",
@@ -91,8 +97,12 @@ describe(core_contract, () => {
 
   test('destroy', async () => {
     const before = getBalance(alice);
-    await contracts.core.actions.destroy([alice, ["6530728038117924388"], false, "foo"]).send(alice);
+    await contracts.core.actions.destroy([alice, ["6530728038117924388"], true, "memo"]).send(alice);
     const after = getBalance(alice);
+    const transfer: Transfer = blockchain.actionTraces[2].decodedData as any;
+
+    expect(transfer.quantity.units.value.toNumber()).toBe(578);
+    expect(transfer.memo).toBe("Reclaimed RAM value of 1 drops(s)");
     expect(after.units.value - before.units.value).toBe(578);
     expect(getDrops().length).toBe(9);
     expect(getDrop(6530728038117924388n)).toBeUndefined();

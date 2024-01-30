@@ -85,7 +85,7 @@ public:
     void transfer( const name from, const name to, const vector<uint64_t> drops_ids, const string memo );
 
     [[eosio::action]]
-    uint64_t destroy( const name owner, const vector<uint64_t> drops_ids, const bool ram_transfer, const string memo );
+    void destroy( const name owner, const vector<uint64_t> drops_ids, const bool sell_ram, const string memo );
 
     [[eosio::action]]
     void pause( bool paused );
