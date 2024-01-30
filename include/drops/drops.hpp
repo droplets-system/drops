@@ -28,15 +28,6 @@ static constexpr uint64_t stats_row = 412;
 // Additional RAM bytes to purchase (buyrambytes bug)
 static constexpr uint64_t purchase_buffer = 1;
 
-// static constexpr uint64_t epochphasetimer = 2419200; // 4-week
-// static constexpr uint64_t epochphasetimer = 604800; // 1-week
-// static constexpr uint64_t epochphasetimer = 86400; // 1-day
-// static constexpr uint64_t epochphasetimer = 43200; // 12-hour
-// static constexpr uint64_t epochphasetimer = 14400; // 4-hour
-static constexpr uint64_t epochphasetimer = 3600; // 1-hour
-// static constexpr uint64_t epochphasetimer = 300; // 5-minute
-// static constexpr uint64_t epochphasetimer = 60; // 1-minute
-
 static constexpr symbol EOS = symbol{"EOS", 4};
 
 uint128_t combine_ids(const uint64_t& v1, const uint64_t& v2) { return (uint128_t{v1} << 64) | v2; }
@@ -46,31 +37,9 @@ class [[eosio::contract("drops")]] drops : public contract
 public:
    using contract::contract;
 
-   /*
-
-   Tables
-
-   */
-
-   struct [[eosio::table("account")]] account_row
-   {
-      name     account;
-      uint32_t drops;
-      uint64_t primary_key() const { return account.value; }
-   };
-
-   struct [[eosio::table("epoch")]] epoch_row
-   {
-      uint64_t   epoch;
-      time_point start;
-      time_point end;
-      uint64_t   primary_key() const { return epoch; }
-   };
-
    struct [[eosio::table("drop")]] drop_row
    {
       uint64_t          seed;
-      uint64_t          epoch;
       name              owner;
       eosio::time_point created;
       bool              bound;
@@ -81,20 +50,8 @@ public:
    struct [[eosio::table("state")]] state_row
    {
       uint16_t id;
-      uint64_t epoch;
       bool     enabled;
       uint64_t primary_key() const { return id; }
-   };
-
-   struct [[eosio::table("stat")]] stat_row
-   {
-      uint64_t  id;
-      name      account;
-      uint64_t  epoch;
-      uint32_t  drops;
-      uint64_t  primary_key() const { return id; }
-      uint64_t  by_account() const { return account.value; }
-      uint128_t by_account_epoch() const { return (uint128_t)account.value << 64 | epoch; }
    };
 
    struct [[eosio::table("unbind")]] unbind_row
@@ -104,26 +61,12 @@ public:
       uint64_t              primary_key() const { return owner.value; }
    };
 
-   /*
-
-   Indices
-
-   */
-
-   typedef eosio::multi_index<"account"_n, account_row> account_table;
-   typedef eosio::multi_index<"epoch"_n, epoch_row>     epoch_table;
    typedef eosio::multi_index<
       "drop"_n,
       drop_row,
       eosio::indexed_by<"owner"_n, eosio::const_mem_fun<drop_row, uint128_t, &drop_row::by_owner>>>
-                                                    drop_table;
-   typedef eosio::multi_index<"state"_n, state_row> state_table;
-   typedef eosio::multi_index<
-      "stat"_n,
-      stat_row,
-      eosio::indexed_by<"account"_n, eosio::const_mem_fun<stat_row, uint64_t, &stat_row::by_account>>,
-      eosio::indexed_by<"accountepoch"_n, eosio::const_mem_fun<stat_row, uint128_t, &stat_row::by_account_epoch>>>
-                                                      stat_table;
+                                                      drop_table;
+   typedef eosio::multi_index<"state"_n, state_row>   state_table;
    typedef eosio::multi_index<"unbind"_n, unbind_row> unbind_table;
 
    /*
@@ -135,11 +78,9 @@ public:
    struct generate_return_value
    {
       uint32_t drops;
-      uint64_t epoch;
       asset    cost;
       asset    refund;
       uint64_t total_drops;
-      uint64_t epoch_drops;
    };
 
    struct destroy_return_value
@@ -184,15 +125,6 @@ public:
 
    /*
 
-    Epoch actions
-
-    */
-
-   [[eosio::action]] drops::epoch_row advance();
-   using advance_action = eosio::action_wrapper<"advance"_n, &drops::advance>;
-
-   /*
-
     Admin actions
 
     */
@@ -223,8 +155,6 @@ public:
    using destroyall_action = eosio::action_wrapper<"destroyall"_n, &drops::destroyall>;
 
 private:
-   drops::epoch_row advance_epoch();
-
    generate_return_value do_generate(name from, name to, asset quantity, std::vector<std::string> parsed);
    generate_return_value do_unbind(name from, name to, asset quantity, std::vector<std::string> parsed);
 
