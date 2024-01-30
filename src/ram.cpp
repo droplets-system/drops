@@ -1,9 +1,6 @@
+#include <cmath>
 #include <eosio.system/eosio.system.hpp>
 
-using namespace eosio;
-using namespace std;
-
-#include <cmath>
 
 namespace eosiosystem {
 
