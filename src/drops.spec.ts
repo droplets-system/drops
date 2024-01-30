@@ -1,4 +1,4 @@
-import { TimePointSec, Name } from "@greymass/eosio";
+import { TimePointSec, Name, UInt64 } from "@greymass/eosio";
 import { Blockchain } from "@proton/vert"
 import { describe, expect, test, beforeEach } from "bun:test";
 
@@ -21,14 +21,36 @@ const contracts = {
 }
 
 interface State {
-    genesis: string;
-    bytes_per_drop: number;
-    paused: boolean;
+  genesis: string;
+  bytes_per_drop: number;
+  paused: boolean;
 }
 
 function getState() {
   const scope = Name.from(core_contract).value.value;
   return contracts.core.tables.state(scope).getTableRows()[0] as State
+}
+
+interface Drop {
+  seed: string;
+  owner: string;
+  created: string;
+}
+
+// function getBalance(account: string) {
+//   const scope = Name.from(core_contract).value.value;
+//   const primary_key = Name.from(account).value.value;
+//   return contracts.token.tables.account(scope).getTableRow(primary_key);
+// }
+
+function getDrop(seed: bigint) {
+  const scope = Name.from(core_contract).value.value;
+  return contracts.core.tables.drop(scope).getTableRow(seed) as Drop
+}
+
+function getDrops() {
+  const scope = Name.from(core_contract).value.value;
+  return contracts.core.tables.drop(scope).getTableRows() as Drop[]
 }
 
 describe(core_contract, () => {
@@ -54,5 +76,11 @@ describe(core_contract, () => {
 
   test('mint', async () => {
     await contracts.token.actions.transfer([alice, core_contract, "10.0000 EOS", "10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]).send(alice);
+    expect(getDrops().length).toBe(10);
+    expect(getDrop(6530728038117924388n)).toEqual({
+      seed: "6530728038117924388",
+      owner: "alice",
+      created: "2024-01-29T00:00:00.000"
+    });
   });
 });
