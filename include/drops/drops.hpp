@@ -77,8 +77,33 @@ public:
    };
    typedef eosio::singleton<"state"_n, state_row> state_table;
 
+   /*
+
+    Return value structs
+
+    */
+   struct generate_return_value
+   {
+      uint32_t drops;
+      asset    cost;
+      asset    refund;
+      // uint64_t total_drops;
+   };
+
+   struct destroy_return_value
+   {
+      int64_t  ram_sold;
+      asset    redeemed;
+      // uint64_t ram_reclaimed;
+   };
+
+   /*
+
+    User actions
+
+    */
    [[eosio::on_notify("*::transfer")]]
-   void on_transfer(const name from, const name to, const asset quantity, const string memo);
+   generate_return_value on_transfer(const name from, const name to, const asset quantity, const string memo);
 
    [[eosio::on_notify("eosio::ramtransfer")]]
    void on_ram_transfer(const name from, const name to, const int64_t bytes);
@@ -87,7 +112,7 @@ public:
    void transfer( const name from, const name to, const vector<uint64_t> drops_ids, const string memo );
 
    [[eosio::action]]
-   void destroy( const name owner, const vector<uint64_t> drops_ids, const bool sell_ram, const string memo );
+   destroy_return_value destroy( const name owner, const vector<uint64_t> drops_ids, const bool sell_ram, const string memo );
 
    [[eosio::action]]
    void pause( bool paused );
@@ -108,7 +133,7 @@ public:
    #endif
 
 private:
-   void do_generate( const name owner, const uint32_t amount, const asset quantity, const string seed );
+   generate_return_value do_generate( const name owner, const uint32_t amount, const asset quantity, const string seed );
    void check_is_paused();
    void buy_ram_bytes(const int64_t bytes );
    void transfer_to(const name to, const asset quantity, const string memo );

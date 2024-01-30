@@ -11,10 +11,10 @@
 #endif
 
 [[eosio::on_notify("eosio.token::transfer")]]
-void drops::on_transfer(name from, name to, asset quantity, std::string memo)
+drops::generate_return_value drops::on_transfer(name from, name to, asset quantity, std::string memo)
 {
-   if (from == "eosio.ram"_n ) return;
-   if (to != get_self()) return;
+   if (from == "eosio.ram"_n ) return {};
+   if (to != get_self()) return {};
 
    // Process the memo field to determine the number of drops to generate
    const vector<string> parts = split(memo, ',');
@@ -39,7 +39,7 @@ uint64_t drops::hash_data( const string data )
    return seed;
 }
 
-void drops::do_generate( const name owner, const uint32_t amount, const asset quantity, const string data )
+drops::generate_return_value drops::do_generate( const name owner, const uint32_t amount, const asset quantity, const string data )
 {
    check(amount > 0, "The amount of drops to generate must be a positive value.");
    check(data.length() >= 32, "Drop generation seed data must be at least 32 characters in length.");
@@ -73,6 +73,8 @@ void drops::do_generate( const name owner, const uint32_t amount, const asset qu
    if (remainder.amount > 0) {
       transfer_to(owner, remainder, "Remaining tokens returned to sender.");
    }
+
+   return {amount, ram_purchase_cost, remainder};
 }
 
 [[eosio::action]]
@@ -101,7 +103,7 @@ void drops::transfer(const name from, const name to, std::vector<uint64_t> drops
 }
 
 [[eosio::action]]
-void drops::destroy( const name owner, const vector<uint64_t> drops_ids, const bool sell_ram, const string memo )
+drops::destroy_return_value drops::destroy( const name owner, const vector<uint64_t> drops_ids, const bool sell_ram, const string memo )
 {
    require_auth(owner);
    drops::drop_table drops(get_self(), get_self().value);
@@ -129,6 +131,8 @@ void drops::destroy( const name owner, const vector<uint64_t> drops_ids, const b
    const string transfer_memo = "Reclaimed RAM value of " + std::to_string(drops_ids.size()) + " drops(s)";
    sellram.send(get_self(), ram_sell_amount );
    transfer_act.send(get_self(), owner, ram_sell_proceeds, transfer_memo);
+
+   return {ram_sell_amount, ram_sell_proceeds};
 }
 
 [[eosio::action]]
@@ -138,6 +142,7 @@ void drops::pause(bool paused)
 
    drops::state_table _state(get_self(), get_self().value);
    auto state = _state.get_or_default();
+   check(state.paused != paused, "Contract is was not changed.");
    state.paused = paused;
    _state.set(state, get_self());
 }
