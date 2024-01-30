@@ -1,9 +1,7 @@
 #include <eosio.system/eosio.system.hpp>
-#include <eosio.system/exchange_state.hpp>
 
 using namespace eosio;
 using namespace std;
-using namespace eosiosystem;
 
 #include <cmath>
 
@@ -11,7 +9,7 @@ namespace eosiosystem {
 
 using eosio::asset;
 
-static int64_t get_bancor_input(int64_t out_reserve, int64_t inp_reserve, int64_t out)
+int64_t get_bancor_input(int64_t out_reserve, int64_t inp_reserve, int64_t out)
 {
    const double ob = out_reserve;
    const double ib = inp_reserve;
@@ -24,7 +22,7 @@ static int64_t get_bancor_input(int64_t out_reserve, int64_t inp_reserve, int64_
    return inp;
 }
 
-static int64_t get_bancor_output(int64_t inp_reserve, int64_t out_reserve, int64_t inp)
+int64_t get_bancor_output(int64_t inp_reserve, int64_t out_reserve, int64_t inp)
 {
    const double ib = inp_reserve;
    const double ob = out_reserve;
@@ -55,7 +53,7 @@ asset ram_cost(uint32_t bytes, symbol core_symbol)
    check(itr != _rammarket.end(), "RAMCORE market not found");
    const int64_t ram_reserve = itr->base.balance.amount;
    const int64_t eos_reserve = itr->quote.balance.amount;
-   const int64_t cost        = exchange_state::get_bancor_input(ram_reserve, eos_reserve, bytes);
+   const int64_t cost        = get_bancor_input(ram_reserve, eos_reserve, bytes);
    return asset{cost, core_symbol};
 }
 
@@ -84,9 +82,9 @@ asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol)
 
    asset out(0, to);
    if (sell_symbol == base_symbol && to == quote_symbol) {
-      out.amount = exchange_state::get_bancor_output(itr->base.balance.amount, itr->quote.balance.amount, from.amount);
+      out.amount = get_bancor_output(itr->base.balance.amount, itr->quote.balance.amount, from.amount);
    } else if (sell_symbol == quote_symbol && to == base_symbol) {
-      out.amount = exchange_state::get_bancor_output(itr->quote.balance.amount, itr->base.balance.amount, from.amount);
+      out.amount = get_bancor_output(itr->quote.balance.amount, itr->base.balance.amount, from.amount);
    } else {
       check(false, "invalid conversion");
    }
