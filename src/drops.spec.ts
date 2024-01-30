@@ -123,19 +123,3 @@ describe(core_contract, () => {
     await expectToThrow(action, "missing required authority bob");
   });
 });
-
-// /**
-//  * Expect a promise to throw an error with a specific message.
-//  * @param promise - The promise to await.
-//  * @param {string} errorMsg - The error message that we expect to see.
-//  */
-// const expectToThrow = async (promise, errorMsg) => {
-//   try {
-//     await promise
-//     expectToThrow()
-//     assert.fail('Expected promise to throw an error');
-//   } catch (e) {
-//     if ( errorMsg ) assert.match(e.message, errorMsg);
-//     else assert.fail('Expected promise to throw an error');
-//   }
-// }
