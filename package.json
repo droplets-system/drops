@@ -1,0 +1,14 @@
+{
+  "type": "module",
+  "scripts": {
+    "build": "cdt-cpp src/drops.cpp -I include -D DEBUG",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@proton/vert": "latest"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "latest"
+  }
+}
