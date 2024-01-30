@@ -103,14 +103,13 @@ void drops::transfer(const name from, const name to, std::vector<uint64_t> drops
 }
 
 [[eosio::action]]
-drops::destroy_return_value drops::destroy( const name owner, const vector<uint64_t> drops_ids, const bool sell_ram, const string memo )
+drops::destroy_return_value drops::destroy( const name owner, const vector<uint64_t> drops_ids, const string memo )
 {
    require_auth(owner);
    drops::drop_table drops(get_self(), get_self().value);
 
    check_is_paused();
    check(drops_ids.size() > 0, "drop_ids is empty");
-   check( sell_ram == true, "not yet implemented");
 
    // release RAM from destroyed drops
    for ( const uint64_t drop_id : drops_ids ) {

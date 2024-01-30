@@ -112,15 +112,14 @@ public:
    void transfer( const name from, const name to, const vector<uint64_t> drops_ids, const string memo );
 
    [[eosio::action]]
-   destroy_return_value destroy( const name owner, const vector<uint64_t> drops_ids, const bool sell_ram, const string memo );
+   destroy_return_value destroy( const name owner, const vector<uint64_t> drops_ids, const string memo );
 
    [[eosio::action]]
    void pause( bool paused );
 
    // action wrappers
-   using transfer_action = eosio::action_wrapper<"transfer"_n, &drops::transfer>;
-   using destroy_action = eosio::action_wrapper<"destroy"_n, &drops::destroy>;
-   using pause_action = eosio::action_wrapper<"pause"_n, &drops::pause>;
+   using transfer_action     = eosio::action_wrapper<"transfer"_n, &drops::transfer>;
+   using destroy_action      = eosio::action_wrapper<"destroy"_n, &drops::destroy>;
 
    // DEBUG (used to help testing)
    #ifdef DEBUG

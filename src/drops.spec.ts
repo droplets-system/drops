@@ -109,17 +109,17 @@ describe(core_contract, () => {
   });
 
   test('destroy::error - not found', async () => {
-    const action = contracts.core.actions.destroy([alice, ["123"], true, "memo"]).send(alice);
+    const action = contracts.core.actions.destroy([alice, ["123"], "memo"]).send(alice);
     await expectToThrow(action, "eosio_assert_message: drop_id=123 not found");
   });
 
   test('destroy::error - must belong to owner', async () => {
-    const action = contracts.core.actions.destroy([bob, ["17855725969634623351"], true, "memo"]).send(bob);
+    const action = contracts.core.actions.destroy([bob, ["17855725969634623351"], "memo"]).send(bob);
     await expectToThrow(action, "eosio_assert_message: drop_id=17855725969634623351 must belong to owner");
   });
 
   test('destroy::error - missing required authority', async () => {
-    const action = contracts.core.actions.destroy([bob, ["17855725969634623351"], true, "memo"]).send(alice);
+    const action = contracts.core.actions.destroy([bob, ["17855725969634623351"], "memo"]).send(alice);
     await expectToThrow(action, "missing required authority bob");
   });
 });
