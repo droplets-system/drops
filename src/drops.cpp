@@ -12,8 +12,9 @@ namespace dropssystem {
 [[eosio::on_notify("*::transfer")]] drops::generate_return_value
 drops::on_transfer(name from, name to, asset quantity, std::string memo)
 {
-   if (from == "eosio.ram"_n ) return {};
-   if (to != get_self()) return {};
+   if (from == "eosio.ram"_n ) return {}; // ignore RAM sales
+   if (to != get_self()) return {}; // ignore transfers not sent to this contract
+   if (from == get_self()) return {}; // ignore transfers sent from this contract
 
    check_is_enabled();
    check(get_first_receiver() == "eosio.token"_n, "Only the eosio.token contract may send tokens to this contract.");
