@@ -1,16 +1,22 @@
 #include "drops/drops.hpp"
 
+#include "ram.cpp"
+
+// DEBUG (used to help testing)
+#ifdef DEBUG
+#include "debug.cpp"
+#endif
+
 namespace dropssystem {
 
-[[eosio::on_notify("eosio.token::transfer")]] drops::generate_return_value
-drops::generate(name from, name to, asset quantity, std::string memo)
+[[eosio::on_notify("*::transfer")]] drops::generate_return_value
+drops::on_transfer(name from, name to, asset quantity, std::string memo)
 {
-   if (from == "eosio.ram"_n || to != _self || from == _self || memo == "bypass") {
-      return {(uint32_t)0, asset{0, EOS}, asset{0, EOS}, (uint64_t)0};
-   }
+   if (from == "eosio.ram"_n ) return {};
+   if (to != get_self()) return {};
 
-   require_auth(from);
-   check(to == _self, "Tokens must be sent to this contract.");
+   check_is_enabled();
+   check(get_first_receiver() == "eosio.token"_n, "Only the eosio.token contract may send tokens to this contract.");
    check(quantity.amount > 0, "The transaction amount must be a positive value.");
    check(quantity.symbol == EOS, "Only the system token is accepted for transfers.");
    check(!memo.empty(), "A memo is required to send tokens to this contract");
@@ -29,10 +35,7 @@ drops::generate(name from, name to, asset quantity, std::string memo)
 
 drops::generate_return_value drops::do_generate(name from, name to, asset quantity, std::vector<std::string> parsed)
 {
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
+   check_is_enabled();
 
    // Ensure amount is a positive value
    uint64_t amount = stoi(parsed[0]);
@@ -40,12 +43,12 @@ drops::generate_return_value drops::do_generate(name from, name to, asset quanti
 
    // Ensure string length
    string data = parsed[1];
-   check(data.length() > 32, "Drop generation seed data must be at least 32 characters in length.");
+   check(data.length() >= 32, "Drop generation seed data must be at least 32 characters in length.");
 
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   uint64_t ram_purchase_amount = amount * (record_size + purchase_buffer);
+   int64_t ram_purchase_amount = amount * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
    action(permission_level{_self, "active"_n}, "eosio"_n, "buyrambytes"_n,
@@ -64,7 +67,7 @@ drops::generate_return_value drops::do_generate(name from, name to, asset quanti
          row.seed    = seed;
          row.owner   = from;
          row.bound   = false;
-         row.created = current_time_point();
+         row.created = current_block_time();
       });
    }
 
@@ -94,10 +97,7 @@ drops::generate_return_value drops::do_generate(name from, name to, asset quanti
 
 drops::generate_return_value drops::do_unbind(name from, name to, asset quantity, std::vector<std::string> parsed)
 {
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
+   check_is_enabled();
 
    // Find the unbind request of the owner
    unbind_table unbinds(_self, _self.value);
@@ -107,7 +107,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   uint64_t ram_purchase_amount = unbinds_itr->drops_ids.size() * (record_size + purchase_buffer);
+   int64_t ram_purchase_amount = get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
    action(permission_level{_self, "active"_n}, "eosio"_n, "buyrambytes"_n,
@@ -166,11 +166,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 [[eosio::action]] drops::generate_return_value drops::mint(name owner, uint32_t amount, std::string data)
 {
    require_auth(owner);
-
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
+   check_is_enabled();
 
    // Ensure amount is a positive value
    check(amount > 0, "The amount of drops to generate must be a positive value.");
@@ -202,22 +198,16 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    };
 }
 
-[[eosio::action]] drops::generate_return_value drops::generatertrn() {}
-
 [[eosio::action]] void drops::transfer(name from, name to, std::vector<uint64_t> drops_ids, string memo)
 {
    require_auth(from);
+   check_is_enabled();
 
    check(is_account(to), "Account does not exist.");
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
    require_recipient(from);
    require_recipient(to);
-
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
 
    // Iterate over all drops selected to be transferred
    drops::drop_table drops(_self, _self.value);
@@ -235,13 +225,9 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 [[eosio::action]] drops::bind_return_value drops::bind(name owner, std::vector<uint64_t> drops_ids)
 {
    require_auth(owner);
+   check_is_enabled();
 
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
-
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
 
    // Iterate over all drops selected to be bound
    drops::drop_table drops(_self, _self.value);
@@ -266,7 +252,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    }
 
    // Calculate RAM sell amount and reclaim value
-   uint64_t ram_sell_amount   = drops_ids.size() * record_size;
+   uint64_t ram_sell_amount   = drops_ids.size() * get_bytes_per_drop();
    asset    ram_sell_proceeds = eosiosystem::ramproceedstminusfee(ram_sell_amount, EOS);
    if (ram_sell_amount > 0) {
       action(permission_level{_self, "active"_n}, "eosio"_n, "sellram"_n, std::make_tuple(_self, ram_sell_amount))
@@ -286,13 +272,9 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 [[eosio::action]] void drops::unbind(name owner, std::vector<uint64_t> drops_ids)
 {
    require_auth(owner);
+   check_is_enabled();
 
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
-
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
 
    // Save the unbind request and await for token transfer with matching memo data
    unbind_table unbinds(_self, _self.value);
@@ -305,11 +287,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 [[eosio::action]] void drops::cancelunbind(name owner)
 {
    require_auth(owner);
-
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
+   check_is_enabled();
 
    // Remove the unbind request of the owner
    unbind_table unbinds(_self, _self.value);
@@ -321,11 +299,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 [[eosio::action]] drops::destroy_return_value drops::destroy(name owner, std::vector<uint64_t> drops_ids, string memo)
 {
    require_auth(owner);
-
-   // Retrieve contract state
-   state_table state(_self, _self.value);
-   auto        state_itr = state.find(1);
-   check(state_itr->enabled, "Contract is currently disabled.");
+   check_is_enabled();
 
    check(drops_ids.size() > 0, "No drops were provided to destroy.");
 
@@ -335,10 +309,10 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    int bound_destroyed = 0;
 
    // Loop to destroy specified drops
-   for (auto it = begin(drops_ids); it != end(drops_ids); ++it) {
-      auto drops_itr = drops.find(*it);
-      check(drops_itr != drops.end(), "Drop not found");
-      check(drops_itr->owner == owner, "Account does not own this drops");
+   for ( const uint64_t drop_id : drops_ids ) {
+      auto drops_itr = drops.find(drop_id);
+      check(drops_itr != drops.end(), "Drop " + to_string(drop_id) + " not found");
+      check(drops_itr->owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
       // Destroy the drops
       drops.erase(drops_itr);
       // Count the number of bound drops destroyed
@@ -349,6 +323,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    }
 
    // Calculate RAM sell amount and proceeds
+   const int64_t record_size = get_bytes_per_drop();
    uint64_t ram_sell_amount   = (drops_ids.size() - bound_destroyed) * record_size;
    asset    ram_sell_proceeds = eosiosystem::ramproceedstminusfee(ram_sell_amount, EOS);
    if (ram_sell_amount > 0) {
@@ -370,115 +345,28 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    };
 }
 
-/**
-    TESTNET ACTIONS
-*/
-[[eosio::action]] void drops::destroyall()
-{
-   require_auth(_self);
-
-   uint64_t            drops_destroyed = 0;
-   map<name, uint64_t> drops_destroyed_for;
-
-   drops::drop_table drops(_self, _self.value);
-   auto              drops_itr = drops.begin();
-   while (drops_itr != drops.end()) {
-      drops_destroyed += 1;
-      // Keep track of how many drops were destroyed per owner for debug refund
-      if (drops_destroyed_for.find(drops_itr->owner) == drops_destroyed_for.end()) {
-         drops_destroyed_for[drops_itr->owner] = 1;
-      } else {
-         drops_destroyed_for[drops_itr->owner] += 1;
-      }
-      drops_itr = drops.erase(drops_itr);
-   }
-
-   // Calculate RAM sell amount
-   uint64_t ram_to_sell = drops_destroyed * record_size;
-   action(permission_level{_self, "active"_n}, "eosio"_n, "sellram"_n, std::make_tuple(_self, ram_to_sell)).send();
-
-   for (auto& iter : drops_destroyed_for) {
-      uint64_t ram_sell_amount   = iter.second * record_size;
-      asset    ram_sell_proceeds = eosiosystem::ramproceedstminusfee(ram_sell_amount, EOS);
-
-      token::transfer_action transfer_act{"eosio.token"_n, {{_self, "active"_n}}};
-      //    check(false, "ram_sell_proceeds: " + ram_sell_proceeds.to_string());
-      transfer_act.send(_self, iter.first, ram_sell_proceeds,
-                        "Testnet Reset - Reclaimed RAM value of " + std::to_string(iter.second) + " drops(s)");
-   }
-}
-
 [[eosio::action]] void drops::enable(bool enabled)
 {
-   require_auth(_self);
+   require_auth(get_self());
 
-   drops::state_table state(_self, _self.value);
-   auto               state_itr = state.find(1);
-   state.modify(state_itr, _self, [&](auto& row) { row.enabled = enabled; });
+   drops::state_table _state(get_self(), get_self().value);
+   auto state = _state.get_or_default();
+   state.enabled = enabled;
+   _state.set(state, get_self());
 }
 
-[[eosio::action]] void drops::init()
+void drops::check_is_enabled()
 {
-   require_auth(_self);
-
-   drop_table  drops(_self, _self.value);
-   state_table state(_self, _self.value);
-
-   // Give system contract the 0 drops
-   drops.emplace(_self, [&](auto& row) {
-      row.seed    = 0;
-      row.owner   = "eosio"_n;
-      row.bound   = true;
-      row.created = current_block_time();
-   });
-
-   // Give Greymass the "Greymass" drops
-   drops.emplace(_self, [&](auto& row) {
-      row.seed    = 7338027470446133248;
-      row.owner   = "teamgreymass"_n;
-      row.bound   = true;
-      row.created = current_block_time();
-   });
-
-   // Set the current state to epoch 1
-   state.emplace(_self, [&](auto& row) {
-      row.id      = 1;
-      row.enabled = false;
-   });
+   drops::state_table _state(get_self(), get_self().value);
+   auto state = _state.get_or_default();
+   check(state.enabled, "Drops are currently disabled.");
 }
 
-[[eosio::action]] void drops::wipe()
+int64_t drops::get_bytes_per_drop()
 {
-   require_auth(_self);
-
-   drops::drop_table drops(_self, _self.value);
-   auto              drops_itr = drops.begin();
-   while (drops_itr != drops.end()) {
-      drops_itr = drops.erase(drops_itr);
-   }
-
-   drops::state_table state(_self, _self.value);
-   auto               state_itr = state.begin();
-   while (state_itr != state.end()) {
-      state_itr = state.erase(state_itr);
-   }
-}
-
-[[eosio::action]] void drops::wipesome()
-{
-   require_auth(_self);
-   drops::drop_table drops(_self, _self.value);
-   auto              drops_itr = drops.begin();
-
-   int i   = 0;
-   int max = 10000;
-   while (drops_itr != drops.end()) {
-      if (i++ > max) {
-         break;
-      }
-      i++;
-      drops_itr = drops.erase(drops_itr);
-   }
+   drops::state_table _state(get_self(), get_self().value);
+   auto state = _state.get_or_default();
+   return state.bytes_per_drop;
 }
 
 std::vector<std::string> drops::split(const std::string& str, char delim)
