@@ -21,6 +21,27 @@ class [[eosio::contract("drops")]] drops : public contract
 public:
    using contract::contract;
 
+   /**
+    * ## TABLE `drops`
+    *
+    * ### params
+    *
+    * - `{uint64_t} seed` - (primary key) unique seed
+    * - `{name} owner` - owner of the drop
+    * - `{block_timestamp} created` - creation time
+    * - `{bool} bound` - whether the drop is bound to an account
+    *
+    * ### example
+    *
+    * ```json
+    * {
+    *   "seed": 16355392114041409,
+    *   "owner": "test.gm",
+    *   "created": "2024-01-29T00:00:00.000",
+    *   "bound": false
+    * }
+    * ```
+    */
    struct [[eosio::table("drop")]] drop_row
    {
       uint64_t          seed;
@@ -31,6 +52,25 @@ public:
       uint128_t         by_owner() const { return ((uint128_t)owner.value << 64) | seed; }
    };
 
+   /**
+    * ## TABLE `state`
+    *
+    * ### params
+    *
+    * - `{block_timestamp} genesis` - genesis time when the contract was created
+    * - `{int64_t} bytes_per_drop` - amount of RAM bytes required per minting drop
+    * - `{bool} enabled` - whether the contract is enabled
+    *
+    * ### example
+    *
+    * ```json
+    * {
+    *   "genesis": "2024-01-29T00:00:00",
+    *   "bytes_per_drop": 512,
+    *   "enabled": true
+    * }
+    * ```
+    */
    struct [[eosio::table("state")]] state_row
    {
       block_timestamp   genesis = current_block_time();
