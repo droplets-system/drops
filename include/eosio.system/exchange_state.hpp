@@ -34,33 +34,12 @@ namespace eosiosystem {
       asset convert( const asset& from, const symbol& to );
       asset direct_convert( const asset& from, const symbol& to );
 
-
-      static int64_t get_bancor_input(int64_t out_reserve, int64_t inp_reserve, int64_t out)
-      {
-         const double ob = out_reserve;
-         const double ib = inp_reserve;
-
-         int64_t inp = (ib * out) / (ob - out);
-
-         if (inp < 0)
-            inp = 0;
-
-         return inp;
-      }
-
-      static int64_t get_bancor_output(int64_t inp_reserve, int64_t out_reserve, int64_t inp)
-      {
-         const double ib = inp_reserve;
-         const double ob = out_reserve;
-         const double in = inp;
-
-         int64_t out = int64_t((in * ob) / (ib + in));
-
-         if (out < 0)
-            out = 0;
-
-         return out;
-      }
+      static int64_t get_bancor_output( int64_t inp_reserve,
+                                        int64_t out_reserve,
+                                        int64_t inp );
+      static int64_t get_bancor_input( int64_t out_reserve,
+                                       int64_t inp_reserve,
+                                       int64_t out );
 
       EOSLIB_SERIALIZE( exchange_state, (supply)(base)(quote) )
    };
