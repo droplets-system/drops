@@ -5,10 +5,10 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@proton/vert": "latest"
+    "@proton/vert": "^0.3.24"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "typescript": "latest"
+    "@types/bun": "^1.0.4",
+    "typescript": "^5.3.3"
   }
 }
