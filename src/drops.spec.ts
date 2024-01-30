@@ -17,6 +17,7 @@ const core_contract = "drops"
 const contracts = {
   core: blockchain.createContract(core_contract, core_contract, true),
   token: blockchain.createContract('eosio.token', 'include/eosio.token/eosio.token', true),
+  system: blockchain.createContract('eosio', 'include/eosio.system/eosio', true),
 }
 
 interface State {
@@ -31,6 +32,10 @@ function getState() {
 }
 
 describe(core_contract, () => {
+  test('eosio::init', async () => {
+    await contracts.system.actions.init([]).send();
+  });
+
   test('eosio.token::issue', async () => {
     const supply = `1000000000.0000 EOS`;
     await contracts.token.actions.create(["eosio.token", supply]).send();

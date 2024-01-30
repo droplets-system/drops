@@ -21,6 +21,7 @@ asset ram_cost(uint32_t bytes, symbol core_symbol)
     name          system_account = "eosio"_n;
     rammarket     _rammarket(system_account, system_account.value);
     auto          itr         = _rammarket.find(system_contract::ramcore_symbol.raw());
+    check(itr != _rammarket.end(), "RAMCORE market not found");
     const int64_t ram_reserve = itr->base.balance.amount;
     const int64_t eos_reserve = itr->quote.balance.amount;
     const int64_t cost        = exchange_state::get_bancor_input(ram_reserve, eos_reserve, bytes);
