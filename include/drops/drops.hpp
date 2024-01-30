@@ -137,6 +137,14 @@ private:
    void check_is_enabled();
    int64_t get_bytes_per_drop();
 
+   void transfer_tokens(name to, asset amount, string memo);
+   void transfer_ram(name to, asset amount, string memo);
+
+   void buy_ram_bytes(int64_t bytes);
+   void sell_ram_bytes(int64_t bytes);
+
+   drop_row modify_drop_binding(name owner, uint64_t drop_id, bool bound);
+
    std::vector<std::string> split(const std::string& str, char delim);
 
    // DEBUG (used to help testing)

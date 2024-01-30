@@ -51,9 +51,7 @@ drops::generate_return_value drops::do_generate(name from, name to, asset quanti
    int64_t ram_purchase_amount = amount * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
-   action(permission_level{_self, "active"_n}, "eosio"_n, "buyrambytes"_n,
-          std::make_tuple(_self, _self, ram_purchase_amount))
-      .send();
+   buy_ram_bytes(ram_purchase_amount);
 
    // Iterate over all drops to be created and insert them into the drop table
    drop_table drops(_self, _self.value);
@@ -82,9 +80,7 @@ drops::generate_return_value drops::do_generate(name from, name to, asset quanti
 
    // Return any remaining tokens to the sender
    if (remainder > 0) {
-      action{permission_level{_self, "active"_n}, "eosio.token"_n, "transfer"_n,
-             std::tuple<name, name, asset, std::string>{_self, from, asset{remainder, EOS}, ""}}
-         .send();
+      transfer_tokens(from, asset{remainder, EOS}, "")
    }
 
    return {
@@ -110,30 +106,11 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    int64_t ram_purchase_amount = get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
-   action(permission_level{_self, "active"_n}, "eosio"_n, "buyrambytes"_n,
-          std::make_tuple(_self, _self, ram_purchase_amount))
-      .send();
+   buy_ram_bytes(ram_purchase_amount);
 
-   // Iterate over all drops selected to be unbound
-   drops::drop_table drops(_self, _self.value);
+   // Recreate all selected drops with new bound value (false)
    for (auto it = begin(unbinds_itr->drops_ids); it != end(unbinds_itr->drops_ids); ++it) {
-      auto            drops_itr = drops.find(*it);
-      drops::drop_row drop      = *drops_itr;
-
-      check(drops_itr != drops.end(), "Drop " + std::to_string(drop.seed) + " not found");
-      check(drop.bound == true, "Drop " + std::to_string(drop.seed) + " is not bound.");
-      check(drop.owner == from, "Drop " + std::to_string(drop.seed) + " does not belong to account.");
-
-      // Destroy the row the contract was paying for
-      drops.erase(drops_itr);
-
-      // Recreate with owner as RAM payer and set as bound
-      drops.emplace(_self, [&](auto& row) {
-         row.seed    = drop.seed;
-         row.owner   = drop.owner;
-         row.bound   = false;
-         row.created = drop.created;
-      });
+      modify_drop_binding(from, *it, false);
    }
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
@@ -147,9 +124,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 
    // Return any remaining tokens to the sender
    if (remainder > 0) {
-      action{permission_level{_self, "active"_n}, "eosio.token"_n, "transfer"_n,
-             std::tuple<name, name, asset, std::string>{_self, from, asset{remainder, EOS}, ""}}
-         .send();
+      transfer_tokens(from, asset{remainder, EOS}, "");
    }
 
    // Destroy the unbind request now that its complete
@@ -222,6 +197,55 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    }
 }
 
+void drops::buy_ram_bytes(int64_t bytes)
+{
+   eosiosystem::system_contract::buyrambytes_action buyrambytes{"eosio"_n, {_self, "active"_n}};
+   buyrambytes.send(_self, _self, bytes);
+}
+
+void drops::sell_ram_bytes(int64_t bytes)
+{
+   eosiosystem::system_contract::sellram_action sellram{"eosio"_n, {_self, "active"_n}};
+   sellram.send(_self, bytes);
+}
+
+void drops::transfer_tokens(name to, asset amount, string memo)
+{
+   token::transfer_action transfer_act{"eosio.token"_n, {{_self, "active"_n}}};
+   transfer_act.send(_self, to, amount, memo);
+}
+
+void drops::transfer_ram(name to, asset amount, string memo) { check(false, "transfer_ram not implemented"); }
+
+drops::drop_row drops::modify_drop_binding(name owner, uint64_t drop_id, bool bound)
+{
+   drops::drop_table drops(_self, _self.value);
+
+   auto drops_itr = drops.find(drop_id);
+
+   check(drops_itr != drops.end(), "Drop " + std::to_string(drops_itr->seed) + " not found");
+   check(drops_itr->owner == owner, "Drop " + std::to_string(drops_itr->seed) + " does not belong to account.");
+   check(drops_itr->bound == bound,
+         "Drop " + std::to_string(drops_itr->seed) + " bound value is already " + std::to_string(bound) + ".");
+
+   // Determine the payer with bound = owner, unbound = contract
+   name ram_payer = bound ? owner : _self;
+
+   // Copy the existing row
+   drops::drop_row drop = *drops_itr;
+
+   // Destroy the existing row
+   drops.erase(drops_itr);
+
+   // Recreate identical drop with new bound value and payer
+   drops.emplace(owner, [&](auto& row) {
+      row.seed    = drop.seed;
+      row.owner   = drop.owner;
+      row.bound   = bound;
+      row.created = drop.created;
+   });
+}
+
 [[eosio::action]] drops::bind_return_value drops::bind(name owner, std::vector<uint64_t> drops_ids)
 {
    require_auth(owner);
@@ -229,43 +253,27 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
-   // Iterate over all drops selected to be bound
    drops::drop_table drops(_self, _self.value);
    for (auto it = begin(drops_ids); it != end(drops_ids); ++it) {
-      auto            drops_itr = drops.find(*it);
-      drops::drop_row drop      = *drops_itr;
-
-      check(drops_itr != drops.end(), "Drop " + std::to_string(drop.seed) + " not found");
-      check(drop.bound == false, "Drop " + std::to_string(drop.seed) + " is already bound.");
-      check(drop.owner == owner, "Drop " + std::to_string(drop.seed) + " does not belong to account.");
-
-      // Destroy the row the contract was paying for
-      drops.erase(drops_itr);
-
-      // Recreate with owner as RAM payer and set as bound
-      drops.emplace(owner, [&](auto& row) {
-         row.seed    = drop.seed;
-         row.owner   = drop.owner;
-         row.bound   = true;
-         row.created = drop.created;
-      });
+      modify_drop_binding(owner, *it, true);
    }
 
    // Calculate RAM sell amount and reclaim value
    uint64_t ram_sell_amount   = drops_ids.size() * get_bytes_per_drop();
    asset    ram_sell_proceeds = eosiosystem::ramproceedstminusfee(ram_sell_amount, EOS);
-   if (ram_sell_amount > 0) {
-      action(permission_level{_self, "active"_n}, "eosio"_n, "sellram"_n, std::make_tuple(_self, ram_sell_amount))
-         .send();
 
-      token::transfer_action transfer_act{"eosio.token"_n, {{_self, "active"_n}}};
-      transfer_act.send(_self, owner, ram_sell_proceeds,
-                        "Reclaimed RAM value of " + std::to_string(drops_ids.size()) + " drops(s)");
+   if (ram_sell_amount > 0) {
+      // Sell the excess RAM no longer used by the contract
+      sell_ram_bytes(ram_sell_amount);
+
+      // Transfer proceeds to the owner
+      transfer_tokens(owner, ram_sell_proceeds,
+                      "Reclaimed RAM value of " + std::to_string(drops_ids.size()) + " drops(s)");
    }
 
    return {
-      ram_sell_amount,  // ram sold
-      ram_sell_proceeds // redeemed ram value
+      ram_sell_amount,  // ram the contract sold
+      ram_sell_proceeds // token value of ram sold
    };
 }
 
@@ -327,12 +335,9 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    uint64_t ram_sell_amount   = (drops_ids.size() - bound_destroyed) * record_size;
    asset    ram_sell_proceeds = eosiosystem::ramproceedstminusfee(ram_sell_amount, EOS);
    if (ram_sell_amount > 0) {
-      action(permission_level{_self, "active"_n}, "eosio"_n, "sellram"_n, std::make_tuple(_self, ram_sell_amount))
-         .send();
-
-      token::transfer_action transfer_act{"eosio.token"_n, {{_self, "active"_n}}};
-      transfer_act.send(_self, owner, ram_sell_proceeds,
-                        "Reclaimed RAM value of " + std::to_string(drops_ids.size()) + " drops(s)");
+      sell_ram_bytes(ram_sell_amount);
+      transfer_tokens(owner, ram_sell_proceeds,
+                      "Reclaimed RAM value of " + std::to_string(drops_ids.size()) + " drops(s)");
    }
 
    // Calculate how much of their own RAM the account reclaimed
