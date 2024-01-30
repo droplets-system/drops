@@ -19,10 +19,10 @@ void drops::on_transfer(name from, name to, asset quantity, std::string memo)
 
     // Process the memo field to determine the number of drops to generate
     const vector<string> parts = split(memo, ',');
-    check(parts.size() == 2, "invalid memo (ex: \"<drops_amount>,<seed>)\"");
+    check(parts.size() == 2, "invalid memo (ex: \"<drops_amount>,<data>)\"");
     const uint32_t amount = stoi(parts[0]);
-    const string seed = parts[1];
-    return do_generate(from, amount, quantity, seed);
+    const string data = parts[1];
+    return do_generate(from, amount, quantity, data);
 }
 
 [[eosio::on_notify("eosio::ramtransfer")]]
@@ -43,7 +43,7 @@ uint64_t drops::hash_data( const string data )
 void drops::do_generate( const name owner, const uint32_t amount, const asset quantity, const string data )
 {
     check(amount > 0, "The amount of drops to generate must be a positive value.");
-    check(data.length() > 32, "Drop generation seed data must be at least 32 characters in length.");
+    check(data.length() >= 32, "Drop generation seed data must be at least 32 characters in length.");
 
     drop_table drops(get_self(), get_self().value);
 
