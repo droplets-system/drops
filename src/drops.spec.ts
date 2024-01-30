@@ -1,4 +1,4 @@
-import { TimePointSec, Name, UInt64 } from "@greymass/eosio";
+import { TimePointSec, Name, UInt64, Asset } from "@greymass/eosio";
 import { Blockchain } from "@proton/vert"
 import { describe, expect, test, beforeEach } from "bun:test";
 
@@ -37,11 +37,11 @@ interface Drop {
   created: string;
 }
 
-// function getBalance(account: string) {
-//   const scope = Name.from(core_contract).value.value;
-//   const primary_key = Name.from(account).value.value;
-//   return contracts.token.tables.account(scope).getTableRow(primary_key);
-// }
+function getBalance(account: string) {
+  const scope = Name.from(account).value.value;
+  const primary_key = Asset.SymbolCode.from("EOS").value.value;
+  return Asset.from(contracts.token.tables.accounts(scope).getTableRow(primary_key).balance);
+}
 
 function getDrop(seed: bigint) {
   const scope = Name.from(core_contract).value.value;
@@ -75,7 +75,12 @@ describe(core_contract, () => {
   });
 
   test('mint', async () => {
+    const before = getBalance(alice);
     await contracts.token.actions.transfer([alice, core_contract, "10.0000 EOS", "10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]).send(alice);
+    const after = getBalance(alice);
+    expect(before.units.value - after.units.value).toBe(5847);
+
+
     expect(getDrops().length).toBe(10);
     expect(getDrop(6530728038117924388n)).toEqual({
       seed: "6530728038117924388",
