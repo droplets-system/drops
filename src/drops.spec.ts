@@ -97,7 +97,7 @@ describe(core_contract, () => {
 
   test('destroy', async () => {
     const before = getBalance(alice);
-    await contracts.core.actions.destroy([alice, ["6530728038117924388"], true, "memo"]).send(alice);
+    await contracts.core.actions.destroy([alice, ["6530728038117924388"], "memo"]).send(alice);
     const after = getBalance(alice);
     const transfer: Transfer = blockchain.actionTraces[2].decodedData as any;
 
