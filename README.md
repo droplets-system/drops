@@ -6,10 +6,10 @@
 
 ### params
 
-- `{uint64_t} seed` - (primary key) unique seed
-- `{name} owner` - owner of the drop
-- `{block_timestamp} created` - creation time
-- `{bool} bound` - whether the drop is bound to an account
+-   `{uint64_t} seed` - (primary key) unique seed
+-   `{name} owner` - owner of the drop
+-   `{block_timestamp} created` - creation time
+-   `{bool} bound` - whether the drop is bound to an account
 
 ### example
 
@@ -26,9 +26,9 @@
 
 ### params
 
-- `{block_timestamp} genesis` - genesis time when the contract was created
-- `{int64_t} bytes_per_drop` - amount of RAM bytes required per minting drop
-- `{bool} enabled` - whether the contract is enabled
+-   `{block_timestamp} genesis` - genesis time when the contract was created
+-   `{int64_t} bytes_per_drop` - amount of RAM bytes required per minting drop
+-   `{bool} enabled` - whether the contract is enabled
 
 ### example
 
