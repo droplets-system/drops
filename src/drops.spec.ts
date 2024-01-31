@@ -204,16 +204,19 @@ describe(core_contract, () => {
 
     test('unbind::error - not found', async () => {
         const action = contracts.core.actions.unbind([bob, ['123']]).send(bob)
-        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found.');
+        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found.')
     })
 
     test('unbind::error - does not belong to account', async () => {
         const action = contracts.core.actions.unbind([alice, ['10272988527514872302']]).send(alice)
-        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 does not belong to account.');
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 does not belong to account.'
+        )
     })
 
     test('unbind::error - is not unbound', async () => {
         const action = contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
-        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound');
+        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound')
     })
 })
