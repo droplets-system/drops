@@ -18,7 +18,7 @@ jobs:
             - name: Install dependencies
               run: make node_modules
             - name: Install CDT
-              run: >
+              run: |
                   wget https://github.com/AntelopeIO/cdt/actions/runs/7549923279/artifacts/1173981216
                   sudo apt install unzip
                   unzip cdt_ubuntu_package_amd64.zip
