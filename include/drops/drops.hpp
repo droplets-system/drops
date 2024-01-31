@@ -172,10 +172,12 @@ public:
    #endif
 
 private:
-   generate_return_value do_generate(name from, name to, asset quantity, std::vector<std::string> parsed);
+   generate_return_value do_generate(const name from, const asset quantity, const uint64_t amount, const string data );
    generate_return_value do_unbind(name from, name to, asset quantity, std::vector<std::string> parsed);
    void check_is_enabled();
    int64_t get_bytes_per_drop();
+   uint64_t hash_data( const string data );
+   void emplace_drops( const name ram_payer, const name owner, const string data, const uint64_t amount );
 
    void transfer_tokens(name to, asset amount, string memo);
    void transfer_ram(name to, asset amount, string memo);

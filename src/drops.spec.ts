@@ -17,6 +17,7 @@ const core_contract = 'drops'
 const contracts = {
     core: blockchain.createContract(core_contract, `build/${core_contract}`, true),
     token: blockchain.createContract('eosio.token', 'include/eosio.token/eosio.token', true),
+    fake: blockchain.createContract('fake.token', 'include/eosio.token/eosio.token', true),
     system: blockchain.createContract('eosio', 'include/eosio.system/eosio', true),
 }
 
@@ -35,6 +36,7 @@ interface Drop {
     seed: string
     owner: string
     created: string
+    bound: boolean
 }
 
 interface Transfer {
@@ -55,9 +57,11 @@ function getDrop(seed: bigint) {
     return contracts.core.tables.drop(scope).getTableRow(seed) as Drop
 }
 
-function getDrops() {
+function getDrops(owner?: string) {
     const scope = Name.from(core_contract).value.value
-    return contracts.core.tables.drop(scope).getTableRows() as Drop[]
+    const rows = contracts.core.tables.drop(scope).getTableRows() as Drop[]
+    if ( !owner) return rows;
+    return rows.filter(row => row.owner === owner)
 }
 
 describe(core_contract, () => {
@@ -73,6 +77,14 @@ describe(core_contract, () => {
         await contracts.token.actions.transfer(['eosio.token', alice, '1000.0000 EOS', '']).send()
     })
 
+    test('fake.token::issue', async () => {
+        const supply = `1000000000.0000 EOS`
+        await contracts.fake.actions.create(['fake.token', supply]).send()
+        await contracts.fake.actions.issue(['fake.token', supply, '']).send()
+        await contracts.fake.actions.transfer(['fake.token', bob, '1000.0000 EOS', '']).send()
+        await contracts.fake.actions.transfer(['fake.token', alice, '1000.0000 EOS', '']).send()
+    })
+
     test('enable', async () => {
         await contracts.core.actions.enable([false]).send()
         expect(getState().enabled).toBe(false)
@@ -81,7 +93,7 @@ describe(core_contract, () => {
         expect(getState().enabled).toBe(true)
     })
 
-    test('mint', async () => {
+    test('on_transfer', async () => {
         const before = getBalance(alice)
         await contracts.token.actions
             .transfer([alice, core_contract, '10.0000 EOS', '10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])
@@ -89,13 +101,50 @@ describe(core_contract, () => {
         const after = getBalance(alice)
 
         expect(before.units.value - after.units.value).toBe(5847)
-        expect(getDrops().length).toBe(10)
+        expect(getDrops(alice).length).toBe(10)
         expect(getDrop(6530728038117924388n)).toEqual({
-            bound: false,
             seed: '6530728038117924388',
             owner: 'alice',
             created: '2024-01-29T00:00:00.000',
+            bound: false,
         })
+    })
+
+    test('mint', async () => {
+        await contracts.core.actions
+            .mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+            .send(bob)
+
+        expect(getDrops(bob).length).toBe(1)
+        expect(getDrop(10272988527514872302n)).toEqual({
+            seed: '10272988527514872302',
+            owner: 'bob',
+            created: '2024-01-29T00:00:00.000',
+            bound: true,
+        })
+    })
+
+    test('mint::error - already exists', async () => {
+        const action = contracts.core.actions
+            .mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+            .send(bob)
+
+        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 already exists.')
+    })
+
+    test('mint 10K', async () => {
+        await contracts.core.actions
+            .mint([bob, 10000, 'cccccccccccccccccccccccccccccccc'])
+            .send(bob)
+
+        expect(getDrops(bob).length).toBe(10001)
+    })
+
+    test('on_transfer::error - invalid contract', async () => {
+        const action = contracts.fake.actions
+            .transfer([alice, core_contract, '10.0000 EOS', '10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])
+            .send(alice)
+        await expectToThrow(action, 'eosio_assert: Only the eosio.token contract may send tokens to this contract.')
     })
 
     test('destroy', async () => {
@@ -109,7 +158,7 @@ describe(core_contract, () => {
         expect(transfer.quantity.units.value.toNumber()).toBe(1157)
         expect(transfer.memo).toBe('Reclaimed RAM value of 2 drops(s)')
         expect(after.units.value - before.units.value).toBe(1157)
-        expect(getDrops().length).toBe(8)
+        expect(getDrops(alice).length).toBe(8)
         expect(getDrop(6530728038117924388n)).toBeUndefined()
     })
 
