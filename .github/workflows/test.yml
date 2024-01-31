@@ -17,6 +17,8 @@ jobs:
             - uses: oven-sh/setup-bun@v1
             - name: Install dependencies
               run: make node_modules
+            - name: Install CDT
+              run: wget https://github.com/AntelopeIO/cdt/releases/download/v4.0.1/cdt_4.0.1_amd64.deb && apt install ./cdt_4.0.1_amd64.deb
             - name: Run checks
               run: make check
             - name: Run build
