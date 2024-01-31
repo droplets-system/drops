@@ -30,21 +30,16 @@ drops::on_transfer(name from, name to, asset quantity, std::string memo)
    } else {
       check(parsed.size() == 2, "Memo data must contain 2 values, seperated by a "
                                 "comma using format: <drops_amount>,<drops_data>");
-      return do_generate(from, to, quantity, parsed);
+
+      const uint64_t amount = stoi(parsed[0]);
+      const string data = parsed[1];
+      return do_generate(from, quantity, amount, data);
    }
 }
 
-drops::generate_return_value drops::do_generate(name from, name to, asset quantity, std::vector<std::string> parsed)
+drops::generate_return_value drops::do_generate(const name from, const asset quantity, const uint64_t amount, const string data )
 {
    check_is_enabled();
-
-   // Ensure amount is a positive value
-   uint64_t amount = stoi(parsed[0]);
-   check(amount > 0, "The amount of drops to generate must be a positive value.");
-
-   // Ensure string length
-   string data = parsed[1];
-   check(data.length() >= 32, "Drop generation seed data must be at least 32 characters in length.");
 
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
@@ -55,20 +50,7 @@ drops::generate_return_value drops::do_generate(name from, name to, asset quanti
    buy_ram_bytes(ram_purchase_amount);
 
    // Iterate over all drops to be created and insert them into the drop table
-   drop_table drops(_self, _self.value);
-   for (int i = 0; i < amount; i++) {
-      string   value      = std::to_string(i) + data;
-      auto     hash       = sha256(value.c_str(), value.length());
-      auto     byte_array = hash.extract_as_byte_array();
-      uint64_t seed;
-      memcpy(&seed, &byte_array, sizeof(uint64_t));
-      drops.emplace(_self, [&](auto& row) {
-         row.seed    = seed;
-         row.owner   = from;
-         row.bound   = false;
-         row.created = current_block_time();
-      });
-   }
+   emplace_drops(get_self(), from, data, amount);
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
    // incoming transfer can cover it
@@ -104,14 +86,15 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   int64_t ram_purchase_amount = unbinds_itr->drops_ids.size() * get_bytes_per_drop();
+   const vector<uint64_t> drops_ids = unbinds_itr->drops_ids;
+   int64_t ram_purchase_amount = drops_ids.size() * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
    buy_ram_bytes(ram_purchase_amount);
 
    // Recreate all selected drops with new bound value (false)
-   for (auto it = begin(unbinds_itr->drops_ids); it != end(unbinds_itr->drops_ids); ++it) {
-      modify_drop_binding(from, *it, false);
+   for (const uint64_t drop_id : drops_ids) {
+      modify_drop_binding(from, drop_id, false);
    }
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
@@ -143,28 +126,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 {
    require_auth(owner);
    check_is_enabled();
-
-   // Ensure amount is a positive value
-   check(amount > 0, "The amount of drops to generate must be a positive value.");
-
-   // Ensure string length
-   check(data.length() > 32, "Drop data must be at least 32 characters in length.");
-
-   // Iterate over all drops to be created and insert them into the drops table
-   drop_table drops(_self, _self.value);
-   for (uint32_t i = 0; i < amount; i++) {
-      string   value      = std::to_string(i) + data;
-      auto     hash       = sha256(value.c_str(), value.length());
-      auto     byte_array = hash.extract_as_byte_array();
-      uint64_t seed;
-      memcpy(&seed, &byte_array, sizeof(uint64_t));
-      drops.emplace(owner, [&](auto& row) {
-         row.seed    = seed;
-         row.owner   = owner;
-         row.bound   = true;
-         row.created = current_time_point();
-      });
-   }
+   emplace_drops(owner, owner, data, amount);
 
    return {
       (uint32_t)amount, // drops minted
@@ -172,6 +134,44 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
       asset{0, EOS},    // refund
       amount,           // total drops
    };
+}
+
+void drops::emplace_drops( const name ram_payer, const name owner, const string data, const uint64_t amount )
+{
+   drop_table drops(get_self(), get_self().value);
+
+   // Ensure amount is a positive value
+   check(amount > 0, "The amount of drops to generate must be a positive value.");
+
+   // Ensure string length
+   check(data.length() >= 32, "Drop data must be at least 32 characters in length.");
+
+   // Iterate over all drops to be created and insert them into the drops table
+   for (int i = 0; i < amount; i++) {
+      const uint64_t seed = hash_data(to_string(i) + data);
+
+      // Ensure first drop does not already exist
+      // NOTE: subsequent drops are not checked for performance reasons
+      if ( i == 0) {
+         check(drops.find(seed) == drops.end(), "Drop " + std::to_string(seed) + " already exists.");
+      }
+
+      drops.emplace(ram_payer, [&](auto& row) {
+         row.seed    = seed;
+         row.owner   = owner;
+         row.bound   = ram_payer == owner;
+         row.created = current_block_time();
+      });
+   }
+}
+
+uint64_t drops::hash_data( const string data )
+{
+   auto hash = sha256(data.c_str(), data.length());
+   auto byte_array = hash.extract_as_byte_array();
+   uint64_t seed;
+   memcpy(&seed, &byte_array, sizeof(uint64_t));
+   return seed;
 }
 
 [[eosio::action]] void drops::transfer(name from, name to, std::vector<uint64_t> drops_ids, string memo)
@@ -187,8 +187,8 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 
    // Iterate over all drops selected to be transferred
    drops::drop_table drops(_self, _self.value);
-   for (auto it = begin(drops_ids); it != end(drops_ids); ++it) {
-      auto drops_itr = drops.find(*it);
+   for ( const uint64_t drop_id : drops_ids ) {
+      auto drops_itr = drops.find(drop_id);
       check(drops_itr != drops.end(), "Drop " + std::to_string(drops_itr->seed) + " not found");
       check(drops_itr->bound == false,
             "Drop " + std::to_string(drops_itr->seed) + " is bound and cannot be transferred");
@@ -257,8 +257,9 @@ drops::drop_row drops::modify_drop_binding(name owner, uint64_t drop_id, bool bo
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
    drops::drop_table drops(_self, _self.value);
-   for (auto it = begin(drops_ids); it != end(drops_ids); ++it) {
-      modify_drop_binding(owner, *it, true);
+
+   for ( const uint64_t drop_id : drops_ids ) {
+      modify_drop_binding(owner, drop_id, true);
    }
 
    // Calculate RAM sell amount and reclaim value
