@@ -1,0 +1,31 @@
+name: Drops Contract
+on: push
+jobs:
+    test-node-js:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                node-version: [18]
+        name: Tests
+        steps:
+            - name: Setup Node.js
+              uses: actions/setup-node@v2
+              with:
+                  node-version: ${{ matrix.node-version }}
+            - uses: actions/checkout@v3
+            - uses: oven-sh/setup-bun@v1
+            - name: Install dependencies
+              run: make node_modules
+            - name: Install CDT
+              run: |
+                  curl -H "Accept: application/vnd.github+json" -H "Authorization: token ${{ secrets.ACCESS_TOKEN }}" -L -o cdt.zip https://api.github.com/repos/AntelopeIO/cdt/actions/artifacts/1173981216/zip
+                  sudo apt install unzip
+                  unzip cdt.zip
+                  sudo apt install ./cdt_4.0.1-1_amd64.deb
+            - name: Run checks
+              run: make check
+            - name: Run build
+              run: make build
+            - name: Run tests
+              run: make test

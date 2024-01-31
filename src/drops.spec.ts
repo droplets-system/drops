@@ -1,6 +1,6 @@
-import {TimePointSec, Name, UInt64, Asset} from '@greymass/eosio'
+import {Asset, Name, TimePointSec} from '@greymass/eosio'
 import {Blockchain, expectToThrow} from '@proton/vert'
-import {describe, expect, test, beforeEach} from 'bun:test'
+import {beforeEach, describe, expect, test} from 'bun:test'
 
 // Vert EOS VM
 const blockchain = new Blockchain()
@@ -15,7 +15,7 @@ beforeEach(async () => {
 
 const core_contract = 'drops'
 const contracts = {
-    core: blockchain.createContract(core_contract, core_contract, true),
+    core: blockchain.createContract(core_contract, `build/${core_contract}`, true),
     token: blockchain.createContract('eosio.token', 'include/eosio.token/eosio.token', true),
     system: blockchain.createContract('eosio', 'include/eosio.system/eosio', true),
 }
