@@ -1,0 +1,25 @@
+name: Tests
+on: push
+jobs:
+    test-node-js:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                node-version: [18]
+        name: Node.js v${{ matrix.node-version }}
+        steps:
+            - name: Setup Node.js
+              uses: actions/setup-node@v2
+              with:
+                  node-version: ${{ matrix.node-version }}
+            - uses: actions/checkout@v3
+            - uses: oven-sh/setup-bun@v1
+            - name: Install dependencies
+              run: make node_modules
+            - name: Run checks
+              run: make check
+            - name: Run build
+              run: make build
+            - name: Run tests
+              run: make test

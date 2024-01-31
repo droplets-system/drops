@@ -15,7 +15,7 @@ beforeEach(async () => {
 
 const core_contract = 'drops'
 const contracts = {
-    core: blockchain.createContract(core_contract, core_contract, true),
+    core: blockchain.createContract(core_contract, `build/${core_contract}`, true),
     token: blockchain.createContract('eosio.token', 'include/eosio.token/eosio.token', true),
     system: blockchain.createContract('eosio', 'include/eosio.system/eosio', true),
 }
