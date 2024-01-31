@@ -19,9 +19,9 @@ jobs:
               run: make node_modules
             - name: Install CDT
               run: |
-                  wget https://github.com/AntelopeIO/cdt/actions/runs/7549923279/artifacts/1173981216
+                  curl -H "Accept: application/vnd.github+json" -H "Authorization: token ${{ secrets.ACCESS_TOKEN }}" -L -o cdt.zip "https://github.com/AntelopeIO/cdt/actions/runs/7549923279/artifacts/1173981216" 
                   sudo apt install unzip
-                  unzip cdt_ubuntu_package_amd64.zip
+                  unzip cdt.zip
                   sudo apt install ./cdt_4.0.1-1_amd64.deb
             - name: Run checks
               run: make check
