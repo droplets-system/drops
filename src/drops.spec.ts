@@ -60,8 +60,8 @@ function getDrop(seed: bigint) {
 function getDrops(owner?: string) {
     const scope = Name.from(core_contract).value.value
     const rows = contracts.core.tables.drop(scope).getTableRows() as Drop[]
-    if ( !owner) return rows;
-    return rows.filter(row => row.owner === owner)
+    if (!owner) return rows
+    return rows.filter((row) => row.owner === owner)
 }
 
 describe(core_contract, () => {
@@ -111,9 +111,7 @@ describe(core_contract, () => {
     })
 
     test('mint', async () => {
-        await contracts.core.actions
-            .mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
-            .send(bob)
+        await contracts.core.actions.mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb']).send(bob)
 
         expect(getDrops(bob).length).toBe(1)
         expect(getDrop(10272988527514872302n)).toEqual({
@@ -129,7 +127,10 @@ describe(core_contract, () => {
             .mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
             .send(bob)
 
-        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 already exists.')
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 already exists.'
+        )
     })
 
     test('mint 10K', async () => {
@@ -144,7 +145,10 @@ describe(core_contract, () => {
         const action = contracts.fake.actions
             .transfer([alice, core_contract, '10.0000 EOS', '10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])
             .send(alice)
-        await expectToThrow(action, 'eosio_assert: Only the eosio.token contract may send tokens to this contract.')
+        await expectToThrow(
+            action,
+            'eosio_assert: Only the eosio.token contract may send tokens to this contract.'
+        )
     })
 
     test('destroy', async () => {
