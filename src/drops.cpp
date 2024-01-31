@@ -26,7 +26,7 @@ drops::on_transfer(name from, name to, asset quantity, std::string memo)
    std::vector<std::string> parsed = split(memo, ',');
    if (parsed[0] == "unbind") {
       check(parsed.size() == 1, "Memo data must only contain 1 value of 'unbind'.");
-      return do_unbind(from, to, quantity, parsed);
+      return do_unbind(from, quantity);
    } else {
       check(parsed.size() == 2, "Memo data must contain 2 values, seperated by a "
                                 "comma using format: <drops_amount>,<drops_data>");
@@ -74,7 +74,7 @@ drops::generate_return_value drops::do_generate(const name from, const asset qua
    };
 }
 
-drops::generate_return_value drops::do_unbind(name from, name to, asset quantity, std::vector<std::string> parsed)
+drops::generate_return_value drops::do_unbind(const name from, const asset quantity )
 {
    check_is_enabled();
 
@@ -94,7 +94,7 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
 
    // Recreate all selected drops with new bound value (false)
    for (const uint64_t drop_id : drops_ids) {
-      modify_drop_binding(from, drop_id, false);
+      modify_drop_binding(get_self(), from, drop_id);
    }
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
@@ -218,35 +218,21 @@ void drops::transfer_tokens(name to, asset amount, string memo)
 
 void drops::transfer_ram(name to, asset amount, string memo) { check(false, "transfer_ram not implemented"); }
 
-drops::drop_row drops::modify_drop_binding(name owner, uint64_t drop_id, bool bound)
+void drops::modify_drop_binding(const name ram_payer, const name owner, const uint64_t drop_id)
 {
-   drops::drop_table drops(_self, _self.value);
+   drops::drop_table drops(get_self(), get_self().value);
 
    auto drops_itr = drops.find(drop_id);
-
-   check(drops_itr != drops.end(), "Drop " + std::to_string(drops_itr->seed) + " not found");
-   check(drops_itr->owner == owner, "Drop " + std::to_string(drops_itr->seed) + " does not belong to account.");
-   check(drops_itr->bound == bound,
-         "Drop " + std::to_string(drops_itr->seed) + " bound value is already " + std::to_string(bound) + ".");
+   check_drop_ownership(owner, drop_id);
 
    // Determine the payer with bound = owner, unbound = contract
-   name ram_payer = bound ? owner : _self;
+   const bool bound = ram_payer == owner;
 
-   // Copy the existing row
-   drops::drop_row drop = *drops_itr;
-
-   // Destroy the existing row
-   drops.erase(drops_itr);
-
-   // Recreate identical drop with new bound value and payer
-   drops.emplace(owner, [&](auto& row) {
-      row.seed    = drop.seed;
-      row.owner   = drop.owner;
-      row.bound   = bound;
-      row.created = drop.created;
+   // Modify RAM payer
+   drops.modify(drops_itr, ram_payer, [&](auto& row) {
+      check(row.bound != bound, "Drop bound was not modified");
+      row.bound = bound;
    });
-
-   return drop;
 }
 
 [[eosio::action]] drops::bind_return_value drops::bind(name owner, std::vector<uint64_t> drops_ids)
@@ -259,7 +245,7 @@ drops::drop_row drops::modify_drop_binding(name owner, uint64_t drop_id, bool bo
    drops::drop_table drops(_self, _self.value);
 
    for ( const uint64_t drop_id : drops_ids ) {
-      modify_drop_binding(owner, drop_id, true);
+      modify_drop_binding(owner, owner, drop_id);
    }
 
    // Calculate RAM sell amount and reclaim value
@@ -281,19 +267,43 @@ drops::drop_row drops::modify_drop_binding(name owner, uint64_t drop_id, bool bo
    };
 }
 
-[[eosio::action]] void drops::unbind(name owner, std::vector<uint64_t> drops_ids)
+[[eosio::action]] void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
 {
    require_auth(owner);
    check_is_enabled();
 
-   check(drops_ids.size() > 0, "No drops were provided to transfer.");
+   unbind_table unbinds(get_self(), get_self().value);
+
+   check(drops_ids.size() > 0, "Drops is empty.");
+
+   // check if valid drops to unbind
+   for ( const uint64_t drop_id : drops_ids ) {
+      check_drop_ownership(owner, drop_id);
+      check_drop_bound(owner, drop_id, true);
+   }
 
    // Save the unbind request and await for token transfer with matching memo data
-   unbind_table unbinds(_self, _self.value);
    unbinds.emplace(owner, [&](auto& row) {
       row.owner     = owner;
       row.drops_ids = drops_ids;
    });
+}
+
+void drops::check_drop_bound( const name owner, const uint64_t drop_id, const bool bound )
+{
+   drop_table drops(get_self(), get_self().value);
+
+   auto drops_itr = drops.find(drop_id);
+   check(drops_itr->bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound") );
+}
+
+void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
+{
+   drop_table drops(get_self(), get_self().value);
+
+   auto drops_itr = drops.find(drop_id);
+   check(drops_itr != drops.end(), "Drop " + to_string(drop_id) + " not found.");
+   check(drops_itr->owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
 }
 
 [[eosio::action]] void drops::cancelunbind(name owner)

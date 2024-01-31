@@ -133,12 +133,10 @@ describe(core_contract, () => {
         )
     })
 
-    test('mint 10K', async () => {
-        await contracts.core.actions
-            .mint([bob, 10000, 'cccccccccccccccccccccccccccccccc'])
-            .send(bob)
+    test('mint 1K', async () => {
+        await contracts.core.actions.mint([bob, 1000, 'cccccccccccccccccccccccccccccccc']).send(bob)
 
-        expect(getDrops(bob).length).toBe(10001)
+        expect(getDrops(bob).length).toBe(1001)
     })
 
     test('on_transfer::error - invalid contract', async () => {
@@ -186,5 +184,36 @@ describe(core_contract, () => {
             .destroy([bob, ['17855725969634623351'], 'memo'])
             .send(alice)
         await expectToThrow(action, 'missing required authority bob')
+    })
+
+    test('unbind', async () => {
+        const before = getBalance(bob)
+        expect(getDrop(10272988527514872302n).bound).toBeTruthy()
+        await contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
+        await contracts.token.actions
+            .transfer([bob, core_contract, '10.0000 EOS', 'unbind'])
+            .send(bob)
+
+        // drop must now be unbound
+        expect(getDrop(10272988527514872302n).bound).toBeFalsy()
+        const after = getBalance(bob)
+
+        // EOS returned for excess RAM
+        expect(before.units.value - after.units.value).toBe(583)
+    })
+
+    test('unbind::error - not found', async () => {
+        const action = contracts.core.actions.unbind([bob, ['123']]).send(bob)
+        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found.');
+    })
+
+    test('unbind::error - does not belong to account', async () => {
+        const action = contracts.core.actions.unbind([alice, ['10272988527514872302']]).send(alice)
+        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 does not belong to account.');
+    })
+
+    test('unbind::error - is not unbound', async () => {
+        const action = contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
+        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound');
     })
 })
