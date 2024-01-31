@@ -86,14 +86,15 @@ drops::generate_return_value drops::do_unbind(name from, name to, asset quantity
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   int64_t ram_purchase_amount = unbinds_itr->drops_ids.size() * get_bytes_per_drop();
+   const vector<uint64_t> drops_ids = unbinds_itr->drops_ids;
+   int64_t ram_purchase_amount = drops_ids.size() * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
    buy_ram_bytes(ram_purchase_amount);
 
    // Recreate all selected drops with new bound value (false)
-   for (auto it = begin(unbinds_itr->drops_ids); it != end(unbinds_itr->drops_ids); ++it) {
-      modify_drop_binding(from, *it, false);
+   for (const uint64_t drop_id : drops_ids) {
+      modify_drop_binding(from, drop_id, false);
    }
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
@@ -186,8 +187,8 @@ uint64_t drops::hash_data( const string data )
 
    // Iterate over all drops selected to be transferred
    drops::drop_table drops(_self, _self.value);
-   for (auto it = begin(drops_ids); it != end(drops_ids); ++it) {
-      auto drops_itr = drops.find(*it);
+   for ( const uint64_t drop_id : drops_ids ) {
+      auto drops_itr = drops.find(drop_id);
       check(drops_itr != drops.end(), "Drop " + std::to_string(drops_itr->seed) + " not found");
       check(drops_itr->bound == false,
             "Drop " + std::to_string(drops_itr->seed) + " is bound and cannot be transferred");
@@ -256,8 +257,9 @@ drops::drop_row drops::modify_drop_binding(name owner, uint64_t drop_id, bool bo
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
    drops::drop_table drops(_self, _self.value);
-   for (auto it = begin(drops_ids); it != end(drops_ids); ++it) {
-      modify_drop_binding(owner, *it, true);
+
+   for ( const uint64_t drop_id : drops_ids ) {
+      modify_drop_binding(owner, drop_id, true);
    }
 
    // Calculate RAM sell amount and reclaim value
