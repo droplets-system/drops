@@ -250,7 +250,7 @@ describe(core_contract, () => {
 
     test('unbind::error - not found', async () => {
         const action = contracts.core.actions.unbind([bob, ['123']]).send(bob)
-        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found.')
+        await expectToThrow(action, 'eosio_assert: Drop not found.')
     })
 
     test('unbind::error - does not belong to account', async () => {
@@ -281,7 +281,7 @@ describe(core_contract, () => {
 
     test('bind::error - not found', async () => {
         const action = contracts.core.actions.bind([bob, ['123']]).send(bob)
-        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found.')
+        await expectToThrow(action, 'eosio_assert: Drop not found.')
     })
 
     test('bind::error - does not belong to account', async () => {

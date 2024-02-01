@@ -81,13 +81,12 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
 
    // Find the unbind request of the owner
    unbind_table unbinds(get_self(), get_self().value);
-   auto         unbinds_itr = unbinds.find(from.value);
-   check(unbinds_itr != unbinds.end(), "No unbind request found for account.");
+   auto & unbind = unbinds.get(from.value, "No unbind request found for account.");
 
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   const vector<uint64_t> drops_ids = unbinds_itr->drops_ids;
+   const vector<uint64_t> drops_ids = unbind.drops_ids;
    const int64_t ram_purchase_amount = drops_ids.size() * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
@@ -95,14 +94,15 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
 
    // Recreate all selected drops with new bound value (false)
    for (const uint64_t drop_id : drops_ids) {
-      modify_drop_binding(get_self(), from, drop_id);
+      check_drop_ownership(drop_id, from);
+      check_drop_bound(drop_id, true);
+      modify_ram_payer(drop_id, get_self());
    }
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
    // incoming transfer can cover it
-   asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
-   check(quantity.amount >= ram_purchase_cost.amount,
-         "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
+   const asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
+   check(quantity.amount >= ram_purchase_cost.amount, "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
    // Calculate any remaining tokens from the transfer after the RAM purchase
    const int64_t remainder = quantity.amount - ram_purchase_cost.amount;
@@ -113,7 +113,7 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
    }
 
    // Destroy the unbind request now that its complete
-   unbinds.erase(unbinds_itr);
+   unbinds.erase(unbind);
 
    return {
       0,                     // drops bought
@@ -193,8 +193,7 @@ void drops::transfer(const name from, const name to, const vector<uint64_t> drop
    for ( const uint64_t drop_id : drops_ids ) {
       auto drops_itr = drops.find(drop_id);
       check(drops_itr != drops.end(), "Drop " + to_string(drops_itr->seed) + " not found");
-      check(drops_itr->bound == false,
-            "Drop " + to_string(drops_itr->seed) + " is bound and cannot be transferred");
+      check(drops_itr->bound == false, "Drop " + to_string(drops_itr->seed) + " is bound and cannot be transferred");
       check(drops_itr->owner == from, "Account does not own drop" + to_string(drops_itr->seed));
       // Perform the transfer
       drops.modify(drops_itr, _self, [&](auto& row) { row.owner = to; });
@@ -223,18 +222,17 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo) 
    check(false, "transfer_ram not implemented");
 }
 
-void drops::modify_drop_binding(const name ram_payer, const name owner, const uint64_t drop_id)
+void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
 {
    drops::drop_table drops(get_self(), get_self().value);
-
-   auto drops_itr = drops.find(drop_id);
-   check_drop_ownership(owner, drop_id);
-
-   // Determine the payer with bound = owner, unbound = contract
-   const bool bound = ram_payer == owner;
+   auto & drop = drops.get(drop_id, "Drop not found");
 
    // Modify RAM payer
-   drops.modify(drops_itr, ram_payer, [&](auto& row) {
+   drops.modify(drop, ram_payer, [&](auto& row) {
+      // Determine the payer with bound = owner, unbound = contract
+      const bool bound = ram_payer == row.owner;
+
+      // Ensure the bound value is being modified
       check(row.bound != bound, "Drop bound was not modified");
       row.bound = bound;
    });
@@ -249,9 +247,9 @@ drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> dr
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
    for ( const uint64_t drop_id : drops_ids ) {
-      check_drop_ownership(owner, drop_id);
-      check_drop_bound(owner, drop_id, false);
-      modify_drop_binding(owner, owner, drop_id);
+      check_drop_ownership(drop_id, owner);
+      check_drop_bound(drop_id, false);
+      modify_ram_payer(drop_id, owner);
    }
 
    // Calculate RAM sell amount and reclaim value
@@ -263,8 +261,7 @@ drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> dr
       sell_ram_bytes(ram_sell_amount);
 
       // Transfer proceeds to the owner
-      transfer_tokens(owner, ram_sell_proceeds,
-                      "Reclaimed RAM value of " + to_string(drops_ids.size()) + " drops(s)");
+      transfer_tokens(owner, ram_sell_proceeds, "Reclaimed RAM value of " + to_string(drops_ids.size()) + " drops(s)");
    }
 
    return {
@@ -285,8 +282,8 @@ void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
 
    // check if valid drops to unbind
    for ( const uint64_t drop_id : drops_ids ) {
-      check_drop_ownership(owner, drop_id);
-      check_drop_bound(owner, drop_id, true);
+      check_drop_ownership(drop_id, owner);
+      check_drop_bound(drop_id, true);
    }
 
    // Save the unbind request and await for token transfer with matching memo data
@@ -296,21 +293,20 @@ void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
    });
 }
 
-void drops::check_drop_bound( const name owner, const uint64_t drop_id, const bool bound )
+void drops::check_drop_bound( const uint64_t drop_id, const bool bound )
 {
    drop_table drops(get_self(), get_self().value);
 
-   auto drops_itr = drops.find(drop_id);
-   check(drops_itr->bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound") );
+   auto drop = drops.get(drop_id, "Drop not found");
+   check(drop.bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound") );
 }
 
-void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
+void drops::check_drop_ownership( const uint64_t drop_id, const name owner )
 {
    drop_table drops(get_self(), get_self().value);
 
-   auto drops_itr = drops.find(drop_id);
-   check(drops_itr != drops.end(), "Drop " + to_string(drop_id) + " not found.");
-   check(drops_itr->owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
+   auto drop = drops.get(drop_id, "Drop not found.");
+   check(drop.owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
 }
 
 [[eosio::action]]
@@ -319,11 +315,11 @@ void drops::cancelunbind(const name owner)
    require_auth(owner);
    check_is_enabled();
 
-   // Remove the unbind request of the owner
    unbind_table unbinds(get_self(), get_self().value);
-   auto         unbinds_itr = unbinds.find(owner.value);
-   check(unbinds_itr != unbinds.end(), "No unbind request found for account.");
-   unbinds.erase(unbinds_itr);
+
+   // Remove the unbind request of the owner
+   auto & unbind = unbinds.get(owner.value, "No unbind request found for account.");
+   unbinds.erase(unbind);
 }
 
 [[eosio::action]]
@@ -355,12 +351,12 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
 
    // Calculate RAM sell amount and proceeds
    const int64_t record_size = get_bytes_per_drop();
-   uint64_t ram_sell_amount   = (drops_ids.size() - bound_destroyed) * record_size;
-   asset    ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
+   const uint64_t ram_sell_amount = (drops_ids.size() - bound_destroyed) * record_size;
+   const asset ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
+
    if (ram_sell_amount > 0) {
       sell_ram_bytes(ram_sell_amount);
-      transfer_tokens(owner, ram_sell_proceeds,
-                      "Reclaimed RAM value of " + to_string(drops_ids.size()) + " drops(s)");
+      transfer_tokens(owner, ram_sell_proceeds, "Reclaimed RAM value of " + to_string(drops_ids.size()) + " drops(s)");
    }
 
    // Calculate how much of their own RAM the account reclaimed
@@ -410,11 +406,11 @@ vector<string> drops::split(const string& str, const char delim)
    return strings;
 }
 
-int64_t drops::to_number(const std::string& str) {
+int64_t drops::to_number(const string& str) {
     if (str.empty()) return 0;
 
     char* end;
-    uint64_t num = std::strtoull(str.c_str(), &end, 10);
+    const uint64_t num = std::strtoull(str.c_str(), &end, 10);
 
     // Check if conversion was successful
     check(*end == '\0', "invalid number format or overflow");

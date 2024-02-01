@@ -195,9 +195,9 @@ private:
    void buy_ram_bytes(int64_t bytes);
    void sell_ram_bytes(int64_t bytes);
 
-   void modify_drop_binding( const name ram_payer, const name owner, const uint64_t drop_id );
-   void check_drop_ownership( const name owner, const uint64_t drop_id );
-   void check_drop_bound( const name owner, const uint64_t drop_id, const bool bound );
+   void modify_ram_payer( const uint64_t drop_id, const name ram_payer );
+   void check_drop_ownership( const uint64_t drop_id, const name owner );
+   void check_drop_bound( const uint64_t drop_id, const bool bound );
 
    // utils
    vector<string> split(const string& str, const char delim);
