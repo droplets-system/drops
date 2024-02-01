@@ -227,7 +227,7 @@ describe(core_contract, () => {
         )
     })
 
-    test('unbind::error - is not unbound', async () => {
+    test('unbind::error - is not bound', async () => {
         const action = contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
         await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound')
     })
@@ -258,7 +258,7 @@ describe(core_contract, () => {
         )
     })
 
-    test('bind::error - is not bound', async () => {
+    test('bind::error - is not unbound', async () => {
         const action = contracts.core.actions.bind([bob, ['10272988527514872302']]).send(bob)
         await expectToThrow(
             action,
@@ -274,7 +274,7 @@ describe(core_contract, () => {
         expect(getUnbind(bob).length).toBe(0)
     })
 
-    test('cancelunbind::error - is not bound', async () => {
+    test('cancelunbind::error - No unbind request', async () => {
         const action = contracts.core.actions.cancelunbind([bob]).send(bob)
         await expectToThrow(action, 'eosio_assert: No unbind request found for account.')
     })
