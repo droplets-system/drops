@@ -94,7 +94,7 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
 
    // Recreate all selected drops with new bound value (false)
    for (const uint64_t drop_id : drops_ids) {
-      check_drop_ownership(drop_id, from);
+      check_drop_owner(drop_id, from);
       check_drop_bound(drop_id, true);
       modify_ram_payer(drop_id, get_self());
    }
@@ -191,14 +191,23 @@ void drops::transfer(const name from, const name to, const vector<uint64_t> drop
    require_recipient(to);
 
    // Iterate over all drops selected to be transferred
-   drops::drop_table drops(get_self(), get_self().value);
    for ( const uint64_t drop_id : drops_ids ) {
-      auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
-      check(drop.bound == false, "Drop " + to_string(drop.seed) + " is bound and cannot be transferred");
-      check(drop.owner == from, "Account does not own drop" + to_string(drop.seed));
-      // Perform the transfer
-      drops.modify(drop, get_self(), [&](auto& row) { row.owner = to; });
+      check_drop_owner(drop_id, from);
+      check_drop_bound(drop_id, false);
+      modify_owner(drop_id, to);
    }
+}
+
+void drops::modify_owner( const uint64_t drop_id, const name new_owner )
+{
+   drops::drop_table drops(get_self(), get_self().value);
+   auto & drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+
+   // Modify owner
+   drops.modify(drop, same_payer, [&](auto& row) {
+      check(row.owner != new_owner, "Drop owner was not modified");
+      row.owner = new_owner;
+   });
 }
 
 void drops::buy_ram_bytes(const int64_t bytes)
@@ -226,7 +235,7 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo) 
 void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
 {
    drops::drop_table drops(get_self(), get_self().value);
-   auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+   auto & drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
 
    // Modify RAM payer
    drops.modify(drop, ram_payer, [&](auto& row) {
@@ -249,7 +258,7 @@ drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> dr
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
    for ( const uint64_t drop_id : drops_ids ) {
-      check_drop_ownership(drop_id, owner);
+      check_drop_owner(drop_id, owner);
       check_drop_bound(drop_id, false);
       modify_ram_payer(drop_id, owner);
    }
@@ -285,7 +294,7 @@ void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
 
    // check if valid drops to unbind
    for ( const uint64_t drop_id : drops_ids ) {
-      check_drop_ownership(drop_id, owner);
+      check_drop_owner(drop_id, owner);
       check_drop_bound(drop_id, true);
    }
 
@@ -304,7 +313,7 @@ void drops::check_drop_bound( const uint64_t drop_id, const bool bound )
    check(drop.bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound") );
 }
 
-void drops::check_drop_ownership( const uint64_t drop_id, const name owner )
+void drops::check_drop_owner( const uint64_t drop_id, const name owner )
 {
    drop_table drops(get_self(), get_self().value);
 
@@ -322,7 +331,7 @@ void drops::cancelunbind(const name owner)
    unbind_table unbinds(get_self(), get_self().value);
 
    // Remove the unbind request of the owner
-   auto & unbind = unbinds.get(owner.value, "No unbind request found for account.");
+   auto unbind = unbinds.require_find(owner.value, "No unbind request found for account.");
    unbinds.erase(unbind);
 }
 
@@ -342,11 +351,11 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
 
    // Loop to destroy specified drops
    for ( const uint64_t drop_id : drops_ids ) {
-      auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
-      check_drop_ownership(drop_id, owner);
+      auto drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+      check_drop_owner(drop_id, owner);
       // Count the number of bound drops destroyed
       // This will be subtracted from the amount paid out
-      if (drop.bound) {
+      if (drop->bound) {
          bound_destroyed++;
       }
 
