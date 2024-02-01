@@ -193,19 +193,18 @@ void drops::transfer(const name from, const name to, const vector<uint64_t> drop
    // Iterate over all drops selected to be transferred
    drops::drop_table drops(get_self(), get_self().value);
    for ( const uint64_t drop_id : drops_ids ) {
-      auto drops_itr = drops.find(drop_id);
-      check(drops_itr != drops.end(), "Drop " + to_string(drops_itr->seed) + " not found");
-      check(drops_itr->bound == false, "Drop " + to_string(drops_itr->seed) + " is bound and cannot be transferred");
-      check(drops_itr->owner == from, "Account does not own drop" + to_string(drops_itr->seed));
+      auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+      check(drop.bound == false, "Drop " + to_string(drop.seed) + " is bound and cannot be transferred");
+      check(drop.owner == from, "Account does not own drop" + to_string(drop.seed));
       // Perform the transfer
-      drops.modify(drops_itr, _self, [&](auto& row) { row.owner = to; });
+      drops.modify(drop, get_self(), [&](auto& row) { row.owner = to; });
    }
 }
 
 void drops::buy_ram_bytes(const int64_t bytes)
 {
-   eosiosystem::system_contract::buyrambytes_action buyrambytes{"eosio"_n, {_self, "active"_n}};
-   buyrambytes.send(get_self(), _self, bytes);
+   eosiosystem::system_contract::buyrambytes_action buyrambytes{"eosio"_n, {get_self(), "active"_n}};
+   buyrambytes.send(get_self(), get_self(), bytes);
 }
 
 void drops::sell_ram_bytes(const int64_t bytes)
