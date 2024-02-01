@@ -17,10 +17,12 @@ test: node_modules build
 
 .PHONY: check
 check: node_modules
+	clang-format --dry-run --Werror src/*.cpp include/drops/*.hpp
 	@${BIN}/eslint src --ext .ts --max-warnings 0 --format unix && echo "Ok"
 
 .PHONY: format
 format: node_modules
+	clang-format -i src/*.cpp include/drops/*.hpp
 	@${BIN}/eslint src --ext .ts --fix
 
 .PHONY: distclean
