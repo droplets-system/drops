@@ -23,6 +23,10 @@ jobs:
                   sudo apt install unzip
                   unzip cdt.zip
                   sudo apt install ./cdt_4.0.1-1_amd64.deb
+            - name: Install clang-format@16
+              run: sudo apt install clang-format-16.0
+            - name: Check clang-format
+              run: clang-format --version
             - name: Run checks
               run: make check
             - name: Run build
