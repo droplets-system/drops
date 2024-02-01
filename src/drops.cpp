@@ -227,7 +227,7 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo) 
 void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
 {
    drops::drop_table drops(get_self(), get_self().value);
-   auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
+   auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
 
    // Modify RAM payer
    drops.modify(drop, ram_payer, [&](auto& row) {
@@ -301,7 +301,7 @@ void drops::check_drop_bound( const uint64_t drop_id, const bool bound )
 {
    drop_table drops(get_self(), get_self().value);
 
-   auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
+   auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
    check(drop.bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound") );
 }
 
@@ -309,7 +309,7 @@ void drops::check_drop_ownership( const uint64_t drop_id, const name owner )
 {
    drop_table drops(get_self(), get_self().value);
 
-   auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
+   auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
    check(drop.owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
 }
 
@@ -343,15 +343,16 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
 
    // Loop to destroy specified drops
    for ( const uint64_t drop_id : drops_ids ) {
-      auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
+      auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
       check_drop_ownership(drop_id, owner);
-      // Destroy the drops
-      drops.erase(drop);
       // Count the number of bound drops destroyed
       // This will be subtracted from the amount paid out
       if (drop.bound) {
          bound_destroyed++;
       }
+
+      // Destroy the drops
+      drops.erase(drop);
    }
 
    // Calculate RAM sell amount and proceeds
