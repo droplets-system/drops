@@ -76,6 +76,8 @@ function getUnbind(owner?: string) {
     return rows.filter((row) => row.owner === owner)
 }
 
+const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<amount>,<data>")`
+
 describe(core_contract, () => {
     test('eosio::init', async () => {
         await contracts.system.actions.init([]).send()
@@ -126,10 +128,7 @@ describe(core_contract, () => {
         const action = contracts.token.actions
             .transfer([alice, core_contract, '10.0000 EOS', ''])
             .send(alice)
-        await expectToThrow(
-            action,
-            'eosio_assert: A memo is required to send tokens to this contract'
-        )
+        await expectToThrow(action, ERROR_INVALID_MEMO)
     })
 
     test('on_transfer::error - invalid number', async () => {
@@ -212,7 +211,7 @@ describe(core_contract, () => {
 
     test('destroy::error - not found', async () => {
         const action = contracts.core.actions.destroy([alice, ['123'], 'memo']).send(alice)
-        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found')
+        await expectToThrow(action, 'eosio_assert: Drop not found.')
     })
 
     test('destroy::error - must belong to owner', async () => {

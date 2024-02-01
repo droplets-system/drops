@@ -14,6 +14,10 @@ namespace dropssystem {
 
 static constexpr symbol EOS = symbol{"EOS", 4};
 
+static const string ERROR_INVALID_MEMO = "Invalid transfer memo. (ex: \"<amount>,<data>\")";
+static const string ERROR_DROP_NOT_FOUND = "Drop not found.";
+static const string ERROR_SYSTEM_DISABLED = "Drops system is disabled.";
+
 uint128_t combine_ids(const uint64_t& v1, const uint64_t& v2) { return (uint128_t{v1} << 64) | v2; }
 
 class [[eosio::contract("drops")]] drops : public contract

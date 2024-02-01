@@ -20,7 +20,7 @@ drops::generate_return_value drops::on_transfer(const name from, const name to, 
    check(get_first_receiver() == "eosio.token"_n, "Only the eosio.token contract may send tokens to this contract.");
    check(quantity.amount > 0, "The transaction amount must be a positive value.");
    check(quantity.symbol == EOS, "Only the system token is accepted for transfers.");
-   check(!memo.empty(), "A memo is required to send tokens to this contract");
+   check(!memo.empty(), ERROR_INVALID_MEMO);
 
    // Process the memo field to determine the number of drops to generate
    const vector<string> parsed = split(memo, ',');
@@ -28,11 +28,10 @@ drops::generate_return_value drops::on_transfer(const name from, const name to, 
       check(parsed.size() == 1, "Memo data must only contain 1 value of 'unbind'.");
       return do_unbind(from, quantity);
    } else {
-      check(parsed.size() == 2, "Memo data must contain 2 values, seperated by a "
-                                "comma using format: <drops_amount>,<drops_data>");
+      check(parsed.size() == 2, ERROR_INVALID_MEMO);
 
       const int64_t amount = to_number(parsed[0]);
-      check( amount > 0, "The amount of drops to generate must be a positive value.");
+      check( amount > 0, "amount must be a positive value.");
       const string data = parsed[1];
       return do_generate(from, quantity, amount, data);
    }
@@ -225,7 +224,7 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo) 
 void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
 {
    drops::drop_table drops(get_self(), get_self().value);
-   auto & drop = drops.get(drop_id, "Drop not found");
+   auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
 
    // Modify RAM payer
    drops.modify(drop, ram_payer, [&](auto& row) {
@@ -253,8 +252,8 @@ drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> dr
    }
 
    // Calculate RAM sell amount and reclaim value
-   uint64_t ram_sell_amount   = drops_ids.size() * get_bytes_per_drop();
-   asset    ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
+   const uint64_t ram_sell_amount = drops_ids.size() * get_bytes_per_drop();
+   const asset ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
 
    if (ram_sell_amount > 0) {
       // Sell the excess RAM no longer used by the contract
@@ -297,7 +296,7 @@ void drops::check_drop_bound( const uint64_t drop_id, const bool bound )
 {
    drop_table drops(get_self(), get_self().value);
 
-   auto drop = drops.get(drop_id, "Drop not found");
+   auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
    check(drop.bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound") );
 }
 
@@ -305,7 +304,7 @@ void drops::check_drop_ownership( const uint64_t drop_id, const name owner )
 {
    drop_table drops(get_self(), get_self().value);
 
-   auto drop = drops.get(drop_id, "Drop not found.");
+   auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
    check(drop.owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
 }
 
@@ -337,14 +336,13 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
 
    // Loop to destroy specified drops
    for ( const uint64_t drop_id : drops_ids ) {
-      auto drops_itr = drops.find(drop_id);
-      check(drops_itr != drops.end(), "Drop " + to_string(drop_id) + " not found");
-      check(drops_itr->owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
+      auto & drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND);
+      check_drop_ownership(drop_id, owner);
       // Destroy the drops
-      drops.erase(drops_itr);
+      drops.erase(drop);
       // Count the number of bound drops destroyed
       // This will be subtracted from the amount paid out
-      if (drops_itr->bound) {
+      if (drop.bound) {
          bound_destroyed++;
       }
    }
@@ -384,7 +382,7 @@ void drops::check_is_enabled()
 {
    drops::state_table _state(get_self(), get_self().value);
    auto state = _state.get_or_default();
-   check(state.enabled, "Drops are currently disabled.");
+   check(state.enabled, ERROR_SYSTEM_DISABLED);
 }
 
 int64_t drops::get_bytes_per_drop()
