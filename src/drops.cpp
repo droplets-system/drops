@@ -31,7 +31,8 @@ drops::generate_return_value drops::on_transfer(const name from, const name to, 
       check(parsed.size() == 2, "Memo data must contain 2 values, seperated by a "
                                 "comma using format: <drops_amount>,<drops_data>");
 
-      const uint64_t amount = stoi(parsed[0]);
+      const int64_t amount = to_number(parsed[0]);
+      check( amount > 0, "The amount of drops to generate must be a positive value.");
       const string data = parsed[1];
       return do_generate(from, quantity, amount, data);
    }
@@ -407,6 +408,21 @@ vector<string> drops::split(const string& str, const char delim)
       strings.push_back(str.substr(start, end - start));
    }
    return strings;
+}
+
+int64_t drops::to_number(const std::string& str) {
+    if (str.empty()) return 0;
+
+    char* end;
+    uint64_t num = std::strtoull(str.c_str(), &end, 10);
+
+    // Check if conversion was successful
+    check(*end == '\0', "invalid number format or overflow");
+
+    // Check for underflow
+    check(num <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), "number underflow");
+
+    return static_cast<int64_t>(num);
 }
 
 } // namespace dropssystem

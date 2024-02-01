@@ -199,7 +199,9 @@ private:
    void check_drop_ownership( const name owner, const uint64_t drop_id );
    void check_drop_bound( const name owner, const uint64_t drop_id, const bool bound );
 
+   // utils
    vector<string> split(const string& str, const char delim);
+   int64_t to_number(const string& str);
 
    // DEBUG (used to help testing)
    #ifdef DEBUG

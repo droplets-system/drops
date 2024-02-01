@@ -122,6 +122,40 @@ describe(core_contract, () => {
         })
     })
 
+    test('on_transfer::error - empty memo', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', ''])
+            .send(alice)
+        await expectToThrow(
+            action,
+            'eosio_assert: A memo is required to send tokens to this contract'
+        )
+    })
+
+    test('on_transfer::error - invalid number', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', 'foo,bar'])
+            .send(alice)
+        await expectToThrow(action, 'eosio_assert: invalid number format or overflow')
+    })
+
+    test('on_transfer::error - number underflow', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', '-1,bar'])
+            .send(alice)
+        await expectToThrow(action, 'eosio_assert: number underflow')
+    })
+
+    test('on_transfer::error - at least 32 characters', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', '1,foobar'])
+            .send(alice)
+        await expectToThrow(
+            action,
+            'eosio_assert: Drop data must be at least 32 characters in length.'
+        )
+    })
+
     test('mint', async () => {
         await contracts.core.actions.mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb']).send(bob)
 
