@@ -55,7 +55,7 @@ drops::generate_return_value drops::do_generate(const name from, const asset qua
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
    // incoming transfer can cover it
-   asset ram_purchase_cost = eosiosystem::ramcostwithfee(ram_purchase_amount, EOS);
+   asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
    check(quantity.amount >= ram_purchase_cost.amount,
          "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
@@ -100,7 +100,7 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
    // incoming transfer can cover it
-   asset ram_purchase_cost = eosiosystem::ramcostwithfee(ram_purchase_amount, EOS);
+   asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
    check(quantity.amount >= ram_purchase_cost.amount,
          "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
@@ -256,7 +256,7 @@ drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> dr
 
    // Calculate RAM sell amount and reclaim value
    uint64_t ram_sell_amount   = drops_ids.size() * get_bytes_per_drop();
-   asset    ram_sell_proceeds = eosiosystem::ramproceedstminusfee(ram_sell_amount, EOS);
+   asset    ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
 
    if (ram_sell_amount > 0) {
       // Sell the excess RAM no longer used by the contract
@@ -356,7 +356,7 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
    // Calculate RAM sell amount and proceeds
    const int64_t record_size = get_bytes_per_drop();
    uint64_t ram_sell_amount   = (drops_ids.size() - bound_destroyed) * record_size;
-   asset    ram_sell_proceeds = eosiosystem::ramproceedstminusfee(ram_sell_amount, EOS);
+   asset    ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
    if (ram_sell_amount > 0) {
       sell_ram_bytes(ram_sell_amount);
       transfer_tokens(owner, ram_sell_proceeds,
