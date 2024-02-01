@@ -80,9 +80,9 @@ public:
 
    struct [[eosio::table("unbind")]] unbind_row
    {
-      name                  owner;
-      std::vector<uint64_t> drops_ids;
-      uint64_t              primary_key() const { return owner.value; }
+      name                 owner;
+      vector<uint64_t>     drops_ids;
+      uint64_t             primary_key() const { return owner.value; }
    };
 
    typedef eosio::multi_index<
@@ -127,17 +127,17 @@ public:
     */
 
    [[eosio::on_notify("*::transfer")]] generate_return_value
-   on_transfer(name from, name to, asset quantity, std::string memo);
+   on_transfer(const name from, const name to, const asset quantity, const string memo);
 
-   [[eosio::action]] generate_return_value mint(name owner, uint32_t amount, std::string data);
+   [[eosio::action]] generate_return_value mint(const name owner, const uint32_t amount, const string data);
 
-   [[eosio::action]] void transfer(name from, name to, std::vector<uint64_t> drops_ids, string memo);
+   [[eosio::action]] void transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo);
 
-   [[eosio::action]] destroy_return_value destroy(name owner, std::vector<uint64_t> drops_ids, string memo);
+   [[eosio::action]] destroy_return_value destroy(const name owner, const vector<uint64_t> drops_ids, const string memo);
 
    [[eosio::action]] bind_return_value bind(const name owner, const vector<uint64_t> drops_ids);
    [[eosio::action]] void              unbind(const name owner, const vector<uint64_t> drops_ids);
-   [[eosio::action]] void              cancelunbind(name owner);
+   [[eosio::action]] void              cancelunbind(const name owner);
 
    using mint_action         = eosio::action_wrapper<"mint"_n, &drops::mint>;
    using transfer_action     = eosio::action_wrapper<"transfer"_n, &drops::transfer>;
@@ -179,8 +179,8 @@ private:
    uint64_t hash_data( const string data );
    void emplace_drops( const name ram_payer, const name owner, const string data, const uint64_t amount );
 
-   void transfer_tokens(name to, asset amount, string memo);
-   void transfer_ram(name to, asset amount, string memo);
+   void transfer_tokens(const name to, const asset quantity, const string memo);
+   void transfer_ram(const name to, const int64_t bytes, const string memo);
 
    void buy_ram_bytes(int64_t bytes);
    void sell_ram_bytes(int64_t bytes);
@@ -189,7 +189,7 @@ private:
    void check_drop_ownership( const name owner, const uint64_t drop_id );
    void check_drop_bound( const name owner, const uint64_t drop_id, const bool bound );
 
-   std::vector<std::string> split(const std::string& str, char delim);
+   vector<string> split(const string& str, const char delim);
 
    // DEBUG (used to help testing)
    #ifdef DEBUG
