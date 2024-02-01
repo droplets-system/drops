@@ -124,32 +124,37 @@ public:
       asset    redeemed;
    };
 
-   /*
-
-    User actions
-
-    */
-
+   // @user
    [[eosio::on_notify("*::transfer")]]
    generate_return_value on_transfer(const name from, const name to, const asset quantity, const string memo);
 
+   // @user
    [[eosio::action]]
    generate_return_value mint(const name owner, const uint32_t amount, const string data);
 
+   // @user
    [[eosio::action]]
    void transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo);
 
+   // @user
    [[eosio::action]]
    destroy_return_value destroy(const name owner, const vector<uint64_t> drops_ids, const string memo);
 
+   // @user
    [[eosio::action]]
    bind_return_value bind(const name owner, const vector<uint64_t> drops_ids);
 
+   // @user
    [[eosio::action]]
    void unbind(const name owner, const vector<uint64_t> drops_ids);
 
+   // @user
    [[eosio::action]]
    void cancelunbind(const name owner);
+
+   // @admin
+   [[eosio::action]]
+   void enable(bool enabled);
 
    // action wrappers
    using mint_action         = eosio::action_wrapper<"mint"_n, &drops::mint>;
@@ -158,22 +163,7 @@ public:
    using bind_action         = eosio::action_wrapper<"bind"_n, &drops::bind>;
    using unbind_action       = eosio::action_wrapper<"unbind"_n, &drops::unbind>;
    using cancelunbind_action = eosio::action_wrapper<"cancelunbind"_n, &drops::cancelunbind>;
-
-   /*
-
-    Admin actions
-
-    */
-
-   [[eosio::action]]
-   void enable(bool enabled);
    using enable_action = eosio::action_wrapper<"enable"_n, &drops::enable>;
-
-   /*
-
-    Testnet actions
-
-    */
 
    // DEBUG (used to help testing)
    #ifdef DEBUG

@@ -9,6 +9,7 @@
 
 namespace dropssystem {
 
+// @user
 [[eosio::on_notify("*::transfer")]]
 drops::generate_return_value drops::on_transfer(const name from, const name to, const asset quantity, const string memo)
 {
@@ -122,6 +123,7 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
    };
 }
 
+// @user
 [[eosio::action]]
 drops::generate_return_value drops::mint(const name owner, const uint32_t amount, const string data)
 {
@@ -175,6 +177,7 @@ uint64_t drops::hash_data( const string data )
    return seed;
 }
 
+// @user
 [[eosio::action]]
 void drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo)
 {
@@ -237,6 +240,7 @@ void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
    });
 }
 
+// @user
 [[eosio::action]]
 drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> drops_ids)
 {
@@ -269,6 +273,7 @@ drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> dr
    };
 }
 
+// @user
 [[eosio::action]]
 void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
 {
@@ -308,6 +313,7 @@ void drops::check_drop_ownership( const uint64_t drop_id, const name owner )
    check(drop.owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
 }
 
+// @user
 [[eosio::action]]
 void drops::cancelunbind(const name owner)
 {
@@ -321,6 +327,7 @@ void drops::cancelunbind(const name owner)
    unbinds.erase(unbind);
 }
 
+// @user
 [[eosio::action]]
 drops::destroy_return_value drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string memo)
 {
@@ -367,6 +374,7 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
    };
 }
 
+// @admin
 [[eosio::action]]
 void drops::enable(const bool enabled)
 {
