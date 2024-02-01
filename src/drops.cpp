@@ -79,7 +79,7 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
    check_is_enabled();
 
    // Find the unbind request of the owner
-   unbind_table unbinds(_self, _self.value);
+   unbind_table unbinds(get_self(), get_self().value);
    auto         unbinds_itr = unbinds.find(from.value);
    check(unbinds_itr != unbinds.end(), "No unbind request found for account.");
 
@@ -186,7 +186,7 @@ uint64_t drops::hash_data( const string data )
    require_recipient(to);
 
    // Iterate over all drops selected to be transferred
-   drops::drop_table drops(_self, _self.value);
+   drops::drop_table drops(get_self(), get_self().value);
    for ( const uint64_t drop_id : drops_ids ) {
       auto drops_itr = drops.find(drop_id);
       check(drops_itr != drops.end(), "Drop " + to_string(drops_itr->seed) + " not found");
@@ -201,7 +201,7 @@ uint64_t drops::hash_data( const string data )
 void drops::buy_ram_bytes(const int64_t bytes)
 {
    eosiosystem::system_contract::buyrambytes_action buyrambytes{"eosio"_n, {_self, "active"_n}};
-   buyrambytes.send(_self, _self, bytes);
+   buyrambytes.send(get_self(), _self, bytes);
 }
 
 void drops::sell_ram_bytes(const int64_t bytes)
@@ -314,7 +314,7 @@ void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
    check_is_enabled();
 
    // Remove the unbind request of the owner
-   unbind_table unbinds(_self, _self.value);
+   unbind_table unbinds(get_self(), get_self().value);
    auto         unbinds_itr = unbinds.find(owner.value);
    check(unbinds_itr != unbinds.end(), "No unbind request found for account.");
    unbinds.erase(unbinds_itr);
@@ -327,7 +327,7 @@ void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
 
    check(drops_ids.size() > 0, "No drops were provided to destroy.");
 
-   drops::drop_table drops(_self, _self.value);
+   drops::drop_table drops(get_self(), get_self().value);
 
    // The number of bound drops that were destroyed
    int bound_destroyed = 0;
