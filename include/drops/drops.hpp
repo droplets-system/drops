@@ -135,8 +135,8 @@ public:
 
    [[eosio::action]] destroy_return_value destroy(name owner, std::vector<uint64_t> drops_ids, string memo);
 
-   [[eosio::action]] bind_return_value bind(name owner, std::vector<uint64_t> drops_ids);
-   [[eosio::action]] void              unbind(name owner, std::vector<uint64_t> drops_ids);
+   [[eosio::action]] bind_return_value bind(const name owner, const vector<uint64_t> drops_ids);
+   [[eosio::action]] void              unbind(const name owner, const vector<uint64_t> drops_ids);
    [[eosio::action]] void              cancelunbind(name owner);
 
    using mint_action         = eosio::action_wrapper<"mint"_n, &drops::mint>;

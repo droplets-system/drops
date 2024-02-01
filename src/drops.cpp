@@ -235,16 +235,16 @@ void drops::modify_drop_binding(const name ram_payer, const name owner, const ui
    });
 }
 
-[[eosio::action]] drops::bind_return_value drops::bind(name owner, std::vector<uint64_t> drops_ids)
+[[eosio::action]] drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> drops_ids)
 {
    require_auth(owner);
    check_is_enabled();
 
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
-   drops::drop_table drops(_self, _self.value);
-
    for ( const uint64_t drop_id : drops_ids ) {
+      check_drop_ownership(owner, drop_id);
+      check_drop_bound(owner, drop_id, false);
       modify_drop_binding(owner, owner, drop_id);
    }
 

@@ -100,7 +100,7 @@ describe(core_contract, () => {
             .send(alice)
         const after = getBalance(alice)
 
-        expect(before.units.value - after.units.value).toBe(5847)
+        expect(after.units.value - before.units.value).toBe(-5847)
         expect(getDrops(alice).length).toBe(10)
         expect(getDrop(6530728038117924388n)).toEqual({
             seed: '6530728038117924388',
@@ -199,7 +199,7 @@ describe(core_contract, () => {
         const after = getBalance(bob)
 
         // EOS returned for excess RAM
-        expect(before.units.value - after.units.value).toBe(583)
+        expect(after.units.value - before.units.value).toBe(-583)
     })
 
     test('unbind::error - not found', async () => {
@@ -218,5 +218,39 @@ describe(core_contract, () => {
     test('unbind::error - is not unbound', async () => {
         const action = contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
         await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound')
+    })
+
+    test('bind', async () => {
+        const before = getBalance(bob)
+        expect(getDrop(10272988527514872302n).bound).toBeFalsy()
+        await contracts.core.actions.bind([bob, ['10272988527514872302']]).send(bob)
+
+        // drop must now be unbound
+        expect(getDrop(10272988527514872302n).bound).toBeTruthy()
+        const after = getBalance(bob)
+
+        // EOS returned for excess RAM
+        expect(after.units.value - before.units.value).toBe(578)
+    })
+
+    test('bind::error - not found', async () => {
+        const action = contracts.core.actions.bind([bob, ['123']]).send(bob)
+        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found.')
+    })
+
+    test('bind::error - does not belong to account', async () => {
+        const action = contracts.core.actions.bind([alice, ['10272988527514872302']]).send(alice)
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 does not belong to account.'
+        )
+    })
+
+    test('bind::error - is not bound', async () => {
+        const action = contracts.core.actions.bind([bob, ['10272988527514872302']]).send(bob)
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 is not unbound'
+        )
     })
 })
