@@ -192,16 +192,18 @@ void drops::transfer(const name from, const name to, const vector<uint64_t> drop
 
    // Iterate over all drops selected to be transferred
    for ( const uint64_t drop_id : drops_ids ) {
-      check_drop_owner(drop_id, from);
-      check_drop_bound(drop_id, false);
-      modify_owner(drop_id, to);
+      modify_owner(drop_id, from, to);
    }
 }
 
-void drops::modify_owner( const uint64_t drop_id, const name new_owner )
+void drops::modify_owner( const uint64_t drop_id, const name current_owner, const name new_owner )
 {
    drops::drop_table drops(get_self(), get_self().value);
-   auto & drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+   auto drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+
+   // additional checks
+   check_drop_owner(drop_id, current_owner);
+   check_drop_bound(drop_id, false);
 
    // Modify owner
    drops.modify(drop, same_payer, [&](auto& row) {
@@ -235,7 +237,7 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo) 
 void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
 {
    drops::drop_table drops(get_self(), get_self().value);
-   auto & drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+   auto drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
 
    // Modify RAM payer
    drops.modify(drop, ram_payer, [&](auto& row) {
