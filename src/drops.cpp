@@ -10,12 +10,15 @@
 namespace dropssystem {
 
 // @user
-[[eosio::on_notify("*::transfer")]]
-drops::generate_return_value drops::on_transfer(const name from, const name to, const asset quantity, const string memo)
+[[eosio::on_notify("*::transfer")]] drops::generate_return_value
+drops::on_transfer(const name from, const name to, const asset quantity, const string memo)
 {
-   if (from == "eosio.ram"_n ) return {}; // ignore RAM sales
-   if (to != get_self()) return {}; // ignore transfers not sent to this contract
-   if (from == get_self()) return {}; // ignore transfers sent from this contract
+   if (from == "eosio.ram"_n)
+      return {}; // ignore RAM sales
+   if (to != get_self())
+      return {}; // ignore transfers not sent to this contract
+   if (from == get_self())
+      return {}; // ignore transfers sent from this contract
 
    check_is_enabled();
    check(get_first_receiver() == "eosio.token"_n, "Only the eosio.token contract may send tokens to this contract.");
@@ -32,13 +35,14 @@ drops::generate_return_value drops::on_transfer(const name from, const name to, 
       check(parsed.size() == 2, ERROR_INVALID_MEMO);
 
       const int64_t amount = to_number(parsed[0]);
-      check( amount > 0, "amount must be a positive value.");
+      check(amount > 0, "amount must be a positive value.");
       const string data = parsed[1];
       return do_generate(from, quantity, amount, data);
    }
 }
 
-drops::generate_return_value drops::do_generate(const name from, const asset quantity, const uint64_t amount, const string data )
+drops::generate_return_value
+drops::do_generate(const name from, const asset quantity, const uint64_t amount, const string data)
 {
    check_is_enabled();
 
@@ -75,19 +79,19 @@ drops::generate_return_value drops::do_generate(const name from, const asset qua
    };
 }
 
-drops::generate_return_value drops::do_unbind(const name from, const asset quantity )
+drops::generate_return_value drops::do_unbind(const name from, const asset quantity)
 {
    check_is_enabled();
 
    // Find the unbind request of the owner
    unbind_table unbinds(get_self(), get_self().value);
-   auto & unbind = unbinds.get(from.value, "No unbind request found for account.");
+   auto&        unbind = unbinds.get(from.value, "No unbind request found for account.");
 
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   const vector<uint64_t> drops_ids = unbind.drops_ids;
-   const int64_t ram_purchase_amount = drops_ids.size() * get_bytes_per_drop();
+   const vector<uint64_t> drops_ids           = unbind.drops_ids;
+   const int64_t          ram_purchase_amount = drops_ids.size() * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
    buy_ram_bytes(ram_purchase_amount);
@@ -102,7 +106,8 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
    // Calculate the purchase cost via bancor after the purchase to ensure the
    // incoming transfer can cover it
    const asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
-   check(quantity.amount >= ram_purchase_cost.amount, "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
+   check(quantity.amount >= ram_purchase_cost.amount,
+         "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
    // Calculate any remaining tokens from the transfer after the RAM purchase
    const int64_t remainder = quantity.amount - ram_purchase_cost.amount;
@@ -124,8 +129,7 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
 }
 
 // @user
-[[eosio::action]]
-drops::generate_return_value drops::mint(const name owner, const uint32_t amount, const string data)
+[[eosio::action]] drops::generate_return_value drops::mint(const name owner, const uint32_t amount, const string data)
 {
    require_auth(owner);
    check_is_enabled();
@@ -139,7 +143,7 @@ drops::generate_return_value drops::mint(const name owner, const uint32_t amount
    };
 }
 
-void drops::emplace_drops( const name ram_payer, const name owner, const string data, const uint64_t amount )
+void drops::emplace_drops(const name ram_payer, const name owner, const string data, const uint64_t amount)
 {
    drop_table drops(get_self(), get_self().value);
 
@@ -155,7 +159,7 @@ void drops::emplace_drops( const name ram_payer, const name owner, const string 
 
       // Ensure first drop does not already exist
       // NOTE: subsequent drops are not checked for performance reasons
-      if ( i == 0) {
+      if (i == 0) {
          check(drops.find(seed) == drops.end(), "Drop " + to_string(seed) + " already exists.");
       }
 
@@ -168,18 +172,18 @@ void drops::emplace_drops( const name ram_payer, const name owner, const string 
    }
 }
 
-uint64_t drops::hash_data( const string data )
+uint64_t drops::hash_data(const string data)
 {
-   auto hash = sha256(data.c_str(), data.length());
-   auto byte_array = hash.extract_as_byte_array();
+   auto     hash       = sha256(data.c_str(), data.length());
+   auto     byte_array = hash.extract_as_byte_array();
    uint64_t seed;
    memcpy(&seed, &byte_array, sizeof(uint64_t));
    return seed;
 }
 
 // @user
-[[eosio::action]]
-void drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo)
+[[eosio::action]] void
+drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo)
 {
    require_auth(from);
    check_is_enabled();
@@ -191,15 +195,15 @@ void drops::transfer(const name from, const name to, const vector<uint64_t> drop
    require_recipient(to);
 
    // Iterate over all drops selected to be transferred
-   for ( const uint64_t drop_id : drops_ids ) {
+   for (const uint64_t drop_id : drops_ids) {
       modify_owner(drop_id, from, to);
    }
 }
 
-void drops::modify_owner( const uint64_t drop_id, const name current_owner, const name new_owner )
+void drops::modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner)
 {
    drops::drop_table drops(get_self(), get_self().value);
-   auto drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+   auto              drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
 
    // additional checks
    check_drop_owner(drop_id, current_owner);
@@ -230,14 +234,15 @@ void drops::transfer_tokens(const name to, const asset quantity, const string me
    transfer_act.send(get_self(), to, quantity, memo);
 }
 
-void drops::transfer_ram(const name to, const int64_t bytes, const string memo) {
+void drops::transfer_ram(const name to, const int64_t bytes, const string memo)
+{
    check(false, "transfer_ram not implemented");
 }
 
-void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
+void drops::modify_ram_payer(const uint64_t drop_id, const name ram_payer)
 {
    drops::drop_table drops(get_self(), get_self().value);
-   auto drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+   auto              drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
 
    // Modify RAM payer
    drops.modify(drop, ram_payer, [&](auto& row) {
@@ -251,23 +256,22 @@ void drops::modify_ram_payer( const uint64_t drop_id, const name ram_payer )
 }
 
 // @user
-[[eosio::action]]
-drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> drops_ids)
+[[eosio::action]] drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> drops_ids)
 {
    require_auth(owner);
    check_is_enabled();
 
    check(drops_ids.size() > 0, "No drops were provided to transfer.");
 
-   for ( const uint64_t drop_id : drops_ids ) {
+   for (const uint64_t drop_id : drops_ids) {
       check_drop_owner(drop_id, owner);
       check_drop_bound(drop_id, false);
       modify_ram_payer(drop_id, owner);
    }
 
    // Calculate RAM sell amount and reclaim value
-   const uint64_t ram_sell_amount = drops_ids.size() * get_bytes_per_drop();
-   const asset ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
+   const uint64_t ram_sell_amount   = drops_ids.size() * get_bytes_per_drop();
+   const asset    ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
 
    if (ram_sell_amount > 0) {
       // Sell the excess RAM no longer used by the contract
@@ -284,8 +288,7 @@ drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> dr
 }
 
 // @user
-[[eosio::action]]
-void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
+[[eosio::action]] void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
 {
    require_auth(owner);
    check_is_enabled();
@@ -295,7 +298,7 @@ void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
    check(drops_ids.size() > 0, "Drops is empty.");
 
    // check if valid drops to unbind
-   for ( const uint64_t drop_id : drops_ids ) {
+   for (const uint64_t drop_id : drops_ids) {
       check_drop_owner(drop_id, owner);
       check_drop_bound(drop_id, true);
    }
@@ -307,15 +310,15 @@ void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
    });
 }
 
-void drops::check_drop_bound( const uint64_t drop_id, const bool bound )
+void drops::check_drop_bound(const uint64_t drop_id, const bool bound)
 {
    drop_table drops(get_self(), get_self().value);
 
    auto drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
-   check(drop.bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound") );
+   check(drop.bound == bound, "Drop " + to_string(drop_id) + " is not " + (bound ? "bound" : "unbound"));
 }
 
-void drops::check_drop_owner( const uint64_t drop_id, const name owner )
+void drops::check_drop_owner(const uint64_t drop_id, const name owner)
 {
    drop_table drops(get_self(), get_self().value);
 
@@ -324,8 +327,7 @@ void drops::check_drop_owner( const uint64_t drop_id, const name owner )
 }
 
 // @user
-[[eosio::action]]
-void drops::cancelunbind(const name owner)
+[[eosio::action]] void drops::cancelunbind(const name owner)
 {
    require_auth(owner);
    check_is_enabled();
@@ -338,8 +340,8 @@ void drops::cancelunbind(const name owner)
 }
 
 // @user
-[[eosio::action]]
-drops::destroy_return_value drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string memo)
+[[eosio::action]] drops::destroy_return_value
+drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string memo)
 {
    require_auth(owner);
    check_is_enabled();
@@ -352,7 +354,7 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
    int bound_destroyed = 0;
 
    // Loop to destroy specified drops
-   for ( const uint64_t drop_id : drops_ids ) {
+   for (const uint64_t drop_id : drops_ids) {
       auto drop = drops.require_find(drop_id, ERROR_DROP_NOT_FOUND.c_str());
       check_drop_owner(drop_id, owner);
       // Count the number of bound drops destroyed
@@ -366,9 +368,9 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
    }
 
    // Calculate RAM sell amount and proceeds
-   const int64_t record_size = get_bytes_per_drop();
-   const uint64_t ram_sell_amount = (drops_ids.size() - bound_destroyed) * record_size;
-   const asset ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
+   const int64_t  record_size       = get_bytes_per_drop();
+   const uint64_t ram_sell_amount   = (drops_ids.size() - bound_destroyed) * record_size;
+   const asset    ram_sell_proceeds = eosiosystem::ram_proceeds_minus_fee(ram_sell_amount, EOS);
 
    if (ram_sell_amount > 0) {
       sell_ram_bytes(ram_sell_amount);
@@ -386,36 +388,35 @@ drops::destroy_return_value drops::destroy(const name owner, const vector<uint64
 }
 
 // @admin
-[[eosio::action]]
-void drops::enable(const bool enabled)
+[[eosio::action]] void drops::enable(const bool enabled)
 {
    require_auth(get_self());
 
    drops::state_table _state(get_self(), get_self().value);
-   auto state = _state.get_or_default();
-   state.enabled = enabled;
+   auto               state = _state.get_or_default();
+   state.enabled            = enabled;
    _state.set(state, get_self());
 }
 
 void drops::check_is_enabled()
 {
    drops::state_table _state(get_self(), get_self().value);
-   auto state = _state.get_or_default();
+   auto               state = _state.get_or_default();
    check(state.enabled, ERROR_SYSTEM_DISABLED);
 }
 
 int64_t drops::get_bytes_per_drop()
 {
    drops::state_table _state(get_self(), get_self().value);
-   auto state = _state.get_or_default();
+   auto               state = _state.get_or_default();
    return state.bytes_per_drop;
 }
 
 vector<string> drops::split(const string& str, const char delim)
 {
-   vector<string>       strings;
-   size_t               start;
-   size_t               end = 0;
+   vector<string> strings;
+   size_t         start;
+   size_t         end = 0;
    while ((start = str.find_first_not_of(delim, end)) != string::npos) {
       end = str.find(delim, start);
       strings.push_back(str.substr(start, end - start));
@@ -423,19 +424,21 @@ vector<string> drops::split(const string& str, const char delim)
    return strings;
 }
 
-int64_t drops::to_number(const string& str) {
-    if (str.empty()) return 0;
+int64_t drops::to_number(const string& str)
+{
+   if (str.empty())
+      return 0;
 
-    char* end;
-    const uint64_t num = std::strtoull(str.c_str(), &end, 10);
+   char*          end;
+   const uint64_t num = std::strtoull(str.c_str(), &end, 10);
 
-    // Check if conversion was successful
-    check(*end == '\0', "invalid number format or overflow");
+   // Check if conversion was successful
+   check(*end == '\0', "invalid number format or overflow");
 
-    // Check for underflow
-    check(num <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), "number underflow");
+   // Check for underflow
+   check(num <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), "number underflow");
 
-    return static_cast<int64_t>(num);
+   return static_cast<int64_t>(num);
 }
 
 } // namespace dropssystem
