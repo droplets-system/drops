@@ -126,19 +126,28 @@ public:
 
     */
 
-   [[eosio::on_notify("*::transfer")]] generate_return_value
-   on_transfer(const name from, const name to, const asset quantity, const string memo);
+   [[eosio::on_notify("*::transfer")]]
+   generate_return_value on_transfer(const name from, const name to, const asset quantity, const string memo);
 
-   [[eosio::action]] generate_return_value mint(const name owner, const uint32_t amount, const string data);
+   [[eosio::action]]
+   generate_return_value mint(const name owner, const uint32_t amount, const string data);
 
-   [[eosio::action]] void transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo);
+   [[eosio::action]]
+   void transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo);
 
-   [[eosio::action]] destroy_return_value destroy(const name owner, const vector<uint64_t> drops_ids, const string memo);
+   [[eosio::action]]
+   destroy_return_value destroy(const name owner, const vector<uint64_t> drops_ids, const string memo);
 
-   [[eosio::action]] bind_return_value bind(const name owner, const vector<uint64_t> drops_ids);
-   [[eosio::action]] void              unbind(const name owner, const vector<uint64_t> drops_ids);
-   [[eosio::action]] void              cancelunbind(const name owner);
+   [[eosio::action]]
+   bind_return_value bind(const name owner, const vector<uint64_t> drops_ids);
 
+   [[eosio::action]]
+   void unbind(const name owner, const vector<uint64_t> drops_ids);
+
+   [[eosio::action]]
+   void cancelunbind(const name owner);
+
+   // action wrappers
    using mint_action         = eosio::action_wrapper<"mint"_n, &drops::mint>;
    using transfer_action     = eosio::action_wrapper<"transfer"_n, &drops::transfer>;
    using destroy_action      = eosio::action_wrapper<"destroy"_n, &drops::destroy>;
@@ -152,7 +161,8 @@ public:
 
     */
 
-   [[eosio::action]] void enable(bool enabled);
+   [[eosio::action]]
+   void enable(bool enabled);
    using enable_action = eosio::action_wrapper<"enable"_n, &drops::enable>;
 
    /*

@@ -9,8 +9,8 @@
 
 namespace dropssystem {
 
-[[eosio::on_notify("*::transfer")]] drops::generate_return_value
-drops::on_transfer(const name from, const name to, const asset quantity, const string memo)
+[[eosio::on_notify("*::transfer")]]
+drops::generate_return_value drops::on_transfer(const name from, const name to, const asset quantity, const string memo)
 {
    if (from == "eosio.ram"_n ) return {}; // ignore RAM sales
    if (to != get_self()) return {}; // ignore transfers not sent to this contract
@@ -122,7 +122,8 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
    };
 }
 
-[[eosio::action]] drops::generate_return_value drops::mint(const name owner, const uint32_t amount, const string data)
+[[eosio::action]]
+drops::generate_return_value drops::mint(const name owner, const uint32_t amount, const string data)
 {
    require_auth(owner);
    check_is_enabled();
@@ -174,7 +175,8 @@ uint64_t drops::hash_data( const string data )
    return seed;
 }
 
-[[eosio::action]] void drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo)
+[[eosio::action]]
+void drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo)
 {
    require_auth(from);
    check_is_enabled();
@@ -237,7 +239,8 @@ void drops::modify_drop_binding(const name ram_payer, const name owner, const ui
    });
 }
 
-[[eosio::action]] drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> drops_ids)
+[[eosio::action]]
+drops::bind_return_value drops::bind(const name owner, const vector<uint64_t> drops_ids)
 {
    require_auth(owner);
    check_is_enabled();
@@ -269,7 +272,8 @@ void drops::modify_drop_binding(const name ram_payer, const name owner, const ui
    };
 }
 
-[[eosio::action]] void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
+[[eosio::action]]
+void drops::unbind(const name owner, const vector<uint64_t> drops_ids)
 {
    require_auth(owner);
    check_is_enabled();
@@ -308,7 +312,8 @@ void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
    check(drops_itr->owner == owner, "Drop " + to_string(drop_id) + " does not belong to account.");
 }
 
-[[eosio::action]] void drops::cancelunbind(name owner)
+[[eosio::action]]
+void drops::cancelunbind(name owner)
 {
    require_auth(owner);
    check_is_enabled();
@@ -320,7 +325,8 @@ void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
    unbinds.erase(unbinds_itr);
 }
 
-[[eosio::action]] drops::destroy_return_value drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string memo)
+[[eosio::action]]
+drops::destroy_return_value drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string memo)
 {
    require_auth(owner);
    check_is_enabled();
@@ -366,7 +372,8 @@ void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
    };
 }
 
-[[eosio::action]] void drops::enable(const bool enabled)
+[[eosio::action]]
+void drops::enable(const bool enabled)
 {
    require_auth(get_self());
 
