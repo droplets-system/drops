@@ -313,7 +313,7 @@ void drops::check_drop_ownership( const name owner, const uint64_t drop_id )
 }
 
 [[eosio::action]]
-void drops::cancelunbind(name owner)
+void drops::cancelunbind(const name owner)
 {
    require_auth(owner);
    check_is_enabled();

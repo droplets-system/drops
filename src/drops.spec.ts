@@ -46,6 +46,11 @@ interface Transfer {
     memo: string
 }
 
+interface Unbind {
+    owner: string
+    drops_ids: string[]
+}
+
 function getBalance(account: string) {
     const scope = Name.from(account).value.value
     const primary_key = Asset.SymbolCode.from('EOS').value.value
@@ -60,6 +65,13 @@ function getDrop(seed: bigint) {
 function getDrops(owner?: string) {
     const scope = Name.from(core_contract).value.value
     const rows = contracts.core.tables.drop(scope).getTableRows() as Drop[]
+    if (!owner) return rows
+    return rows.filter((row) => row.owner === owner)
+}
+
+function getUnbind(owner?: string) {
+    const scope = Name.from(core_contract).value.value
+    const rows = contracts.core.tables.unbind(scope).getTableRows() as Unbind[]
     if (!owner) return rows
     return rows.filter((row) => row.owner === owner)
 }
@@ -252,5 +264,18 @@ describe(core_contract, () => {
             action,
             'eosio_assert_message: Drop 10272988527514872302 is not unbound'
         )
+    })
+
+    test('cancelunbind', async () => {
+        expect(getUnbind(bob).length).toBe(0)
+        await contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
+        expect(getUnbind(bob).length).toBe(1)
+        await contracts.core.actions.cancelunbind([bob]).send(bob)
+        expect(getUnbind(bob).length).toBe(0)
+    })
+
+    test('cancelunbind::error - is not bound', async () => {
+        const action = contracts.core.actions.cancelunbind([bob]).send(bob)
+        await expectToThrow(action, 'eosio_assert: No unbind request found for account.')
     })
 })
