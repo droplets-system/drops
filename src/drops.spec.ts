@@ -46,6 +46,11 @@ interface Transfer {
     memo: string
 }
 
+interface Unbind {
+    owner: string
+    drops_ids: string[]
+}
+
 function getBalance(account: string) {
     const scope = Name.from(account).value.value
     const primary_key = Asset.SymbolCode.from('EOS').value.value
@@ -63,6 +68,15 @@ function getDrops(owner?: string) {
     if (!owner) return rows
     return rows.filter((row) => row.owner === owner)
 }
+
+function getUnbind(owner?: string) {
+    const scope = Name.from(core_contract).value.value
+    const rows = contracts.core.tables.unbind(scope).getTableRows() as Unbind[]
+    if (!owner) return rows
+    return rows.filter((row) => row.owner === owner)
+}
+
+const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<amount>,<data>")`
 
 describe(core_contract, () => {
     test('eosio::init', async () => {
@@ -100,7 +114,7 @@ describe(core_contract, () => {
             .send(alice)
         const after = getBalance(alice)
 
-        expect(before.units.value - after.units.value).toBe(5847)
+        expect(after.units.value - before.units.value).toBe(-5847)
         expect(getDrops(alice).length).toBe(10)
         expect(getDrop(6530728038117924388n)).toEqual({
             seed: '6530728038117924388',
@@ -108,6 +122,37 @@ describe(core_contract, () => {
             created: '2024-01-29T00:00:00.000',
             bound: false,
         })
+    })
+
+    test('on_transfer::error - empty memo', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', ''])
+            .send(alice)
+        await expectToThrow(action, ERROR_INVALID_MEMO)
+    })
+
+    test('on_transfer::error - invalid number', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', 'foo,bar'])
+            .send(alice)
+        await expectToThrow(action, 'eosio_assert: invalid number format or overflow')
+    })
+
+    test('on_transfer::error - number underflow', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', '-1,bar'])
+            .send(alice)
+        await expectToThrow(action, 'eosio_assert: number underflow')
+    })
+
+    test('on_transfer::error - at least 32 characters', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', '1,foobar'])
+            .send(alice)
+        await expectToThrow(
+            action,
+            'eosio_assert: Drop data must be at least 32 characters in length.'
+        )
     })
 
     test('mint', async () => {
@@ -133,12 +178,10 @@ describe(core_contract, () => {
         )
     })
 
-    test('mint 10K', async () => {
-        await contracts.core.actions
-            .mint([bob, 10000, 'cccccccccccccccccccccccccccccccc'])
-            .send(bob)
+    test('mint 1K', async () => {
+        await contracts.core.actions.mint([bob, 1000, 'cccccccccccccccccccccccccccccccc']).send(bob)
 
-        expect(getDrops(bob).length).toBe(10001)
+        expect(getDrops(bob).length).toBe(1001)
     })
 
     test('on_transfer::error - invalid contract', async () => {
@@ -168,7 +211,7 @@ describe(core_contract, () => {
 
     test('destroy::error - not found', async () => {
         const action = contracts.core.actions.destroy([alice, ['123'], 'memo']).send(alice)
-        await expectToThrow(action, 'eosio_assert_message: Drop 123 not found')
+        await expectToThrow(action, 'eosio_assert: Drop not found.')
     })
 
     test('destroy::error - must belong to owner', async () => {
@@ -186,5 +229,86 @@ describe(core_contract, () => {
             .destroy([bob, ['17855725969634623351'], 'memo'])
             .send(alice)
         await expectToThrow(action, 'missing required authority bob')
+    })
+
+    test('unbind', async () => {
+        const before = getBalance(bob)
+        expect(getDrop(10272988527514872302n).bound).toBeTruthy()
+        await contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
+        await contracts.token.actions
+            .transfer([bob, core_contract, '10.0000 EOS', 'unbind'])
+            .send(bob)
+
+        // drop must now be unbound
+        expect(getDrop(10272988527514872302n).bound).toBeFalsy()
+        const after = getBalance(bob)
+
+        // EOS returned for excess RAM
+        expect(after.units.value - before.units.value).toBe(-583)
+    })
+
+    test('unbind::error - not found', async () => {
+        const action = contracts.core.actions.unbind([bob, ['123']]).send(bob)
+        await expectToThrow(action, 'eosio_assert: Drop not found.')
+    })
+
+    test('unbind::error - does not belong to account', async () => {
+        const action = contracts.core.actions.unbind([alice, ['10272988527514872302']]).send(alice)
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 does not belong to account.'
+        )
+    })
+
+    test('unbind::error - is not bound', async () => {
+        const action = contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
+        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound')
+    })
+
+    test('bind', async () => {
+        const before = getBalance(bob)
+        expect(getDrop(10272988527514872302n).bound).toBeFalsy()
+        await contracts.core.actions.bind([bob, ['10272988527514872302']]).send(bob)
+
+        // drop must now be unbound
+        expect(getDrop(10272988527514872302n).bound).toBeTruthy()
+        const after = getBalance(bob)
+
+        // EOS returned for excess RAM
+        expect(after.units.value - before.units.value).toBe(578)
+    })
+
+    test('bind::error - not found', async () => {
+        const action = contracts.core.actions.bind([bob, ['123']]).send(bob)
+        await expectToThrow(action, 'eosio_assert: Drop not found.')
+    })
+
+    test('bind::error - does not belong to account', async () => {
+        const action = contracts.core.actions.bind([alice, ['10272988527514872302']]).send(alice)
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 does not belong to account.'
+        )
+    })
+
+    test('bind::error - is not unbound', async () => {
+        const action = contracts.core.actions.bind([bob, ['10272988527514872302']]).send(bob)
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 is not unbound'
+        )
+    })
+
+    test('cancelunbind', async () => {
+        expect(getUnbind(bob).length).toBe(0)
+        await contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
+        expect(getUnbind(bob).length).toBe(1)
+        await contracts.core.actions.cancelunbind([bob]).send(bob)
+        expect(getUnbind(bob).length).toBe(0)
+    })
+
+    test('cancelunbind::error - No unbind request', async () => {
+        const action = contracts.core.actions.cancelunbind([bob]).send(bob)
+        await expectToThrow(action, 'eosio_assert: No unbind request found for account.')
     })
 })

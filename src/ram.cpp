@@ -41,7 +41,7 @@ double round_to(double value, double precision = 1.0, bool up = false)
    }
 }
 
-asset ramcost(uint32_t bytes, symbol core_symbol)
+asset ram_cost(uint32_t bytes, symbol core_symbol)
 {
    name          system_account = "eosio"_n;
    rammarket     _rammarket(system_account, system_account.value);
@@ -52,15 +52,15 @@ asset ramcost(uint32_t bytes, symbol core_symbol)
    return asset{cost, core_symbol};
 }
 
-asset ramcostwithfee(uint32_t bytes, symbol core_symbol)
+asset ram_cost_with_fee(uint32_t bytes, symbol core_symbol)
 {
-   const asset   cost          = ramcost(bytes, core_symbol);
+   const asset   cost          = ram_cost(bytes, core_symbol);
    const int64_t cost_plus_fee = cost.amount / double(0.995);
    return asset{cost_plus_fee, core_symbol};
 }
 
 // asset direct_convert(const asset& from, const symbol& to)
-asset ramproceedstminusfee(uint32_t bytes, symbol core_symbol)
+asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol)
 {
    asset from = asset{bytes, system_contract::ram_symbol};
 
