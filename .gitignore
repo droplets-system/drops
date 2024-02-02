@@ -1,4 +1,5 @@
 build
+codegen
 node_modules
 *.wasm
 *.abi

@@ -2,7 +2,7 @@ SHELL := /bin/bash
 TEST_FILES := $(shell find src -name '*.ts')
 BIN := ./node_modules/.bin
 
-build:  | build/dir
+build: | build/dir
 	cdt-cpp -abigen -abigen_output=build/drops.abi -o build/drops.wasm src/drops.cpp -R src -I include -D DEBUG
 
 build/dir:
@@ -12,22 +12,22 @@ clean:
 	rm -rf build
 
 .PHONY: test
-test: build node_modules test/codegen
+test: build node_modules build/drops.ts init/codegen
 	bun test
 
-test/codegen: test/codegen/dir build/codegen/drops.ts build/codegen/eosio.ts build/codegen/eosio.token.ts 
+init/codegen: codegen/dir codegen/eosio.ts codegen/eosio.token.ts 
 
-test/codegen/dir:
-	mkdir -p build/codegen
+build/drops.ts: 
+	npx @wharfkit/cli generate --json ./build/drops.abi --file ./build/drops.ts drops
 
-build/codegen/drops.ts:
-	npx @wharfkit/cli generate --json ./build/drops.abi --file ./build/codegen/drops.ts drops
+codegen/dir:
+	mkdir -p codegen
 
-build/codegen/eosio.ts:
-	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./build/codegen/eosio.ts eosio
+codegen/eosio.ts:
+	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./codegen/eosio.ts eosio
 
-build/codegen/eosio.token.ts:
-	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./build/codegen/eosio.token.ts eosio.token
+codegen/eosio.token.ts:
+	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./codegen/eosio.token.ts eosio.token
 
 .PHONY: check
 check: cppcheck jscheck
