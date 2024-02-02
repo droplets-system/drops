@@ -20,7 +20,6 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    if (from == get_self())
       return {}; // ignore transfers sent from this contract
 
-   check_is_enabled();
    check(get_first_receiver() == "eosio.token"_n, "Only the eosio.token contract may send tokens to this contract.");
    check(quantity.amount > 0, "The transaction amount must be a positive value.");
    check(quantity.symbol == EOS, "Only the system token is accepted for transfers.");
