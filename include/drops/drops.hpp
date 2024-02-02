@@ -175,10 +175,11 @@ private:
    int64_t  get_bytes_per_drop();
    uint64_t hash_data(const string data);
 
-   void transfer_tokens(const name to, const asset quantity, const string memo);
-   void transfer_ram(const name to, const int64_t bytes, const string memo);
-   void buy_ram_bytes(int64_t bytes);
-   void sell_ram_bytes(int64_t bytes);
+   void  transfer_tokens(const name to, const asset quantity, const string memo);
+   void  transfer_ram(const name to, const int64_t bytes, const string memo);
+   void  buy_ram_bytes(int64_t bytes);
+   void  sell_ram_bytes(int64_t bytes);
+   asset refund_remaining_tokens(const name account, const asset tokens_received, const asset tokens_spent);
 
    void check_is_enabled();
    void check_drop_owner(const drop_row drop, const name owner);

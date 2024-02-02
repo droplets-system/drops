@@ -41,50 +41,45 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 }
 
 drops::generate_return_value
-drops::do_generate(const name from, const asset quantity, const uint64_t amount, const string data)
+drops::do_generate(const name account, const asset tokens_received, const uint64_t drop_quantity, const string data)
 {
    check_is_enabled();
 
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
    // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   int64_t ram_purchase_amount = amount * get_bytes_per_drop();
+   int64_t ram_purchase_amount = drop_quantity * get_bytes_per_drop();
 
    // Purchase the RAM for this transaction using the tokens from the transfer
    buy_ram_bytes(ram_purchase_amount);
 
    // Iterate over all drops to be created and insert them into the drop table
-   emplace_drops(get_self(), from, data, amount);
+   emplace_drops(get_self(), account, data, drop_quantity);
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
    // incoming transfer can cover it
    asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
-   check(quantity.amount >= ram_purchase_cost.amount,
+   check(tokens_received.amount >= ram_purchase_cost.amount,
          "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
-   // Calculate any remaining tokens from the transfer after the RAM purchase
-   int64_t remainder = quantity.amount - ram_purchase_cost.amount;
-
-   // Return any remaining tokens to the sender
-   if (remainder > 0) {
-      transfer_tokens(from, asset{remainder, EOS}, "");
-   }
+   // Refund any remaining tokens to the sender
+   asset refunded = refund_remaining_tokens(account, tokens_received, ram_purchase_cost);
 
    return {
-      (uint32_t)amount,      // drops bought
-      ram_purchase_cost,     // cost
-      asset{remainder, EOS}, // refund
-      amount,                // total drops
+      (uint32_t)drop_quantity, // drops bought
+      ram_purchase_cost,       // cost
+      refunded,                // refund
+      drop_quantity,           // total drops
    };
 }
 
-drops::generate_return_value drops::do_unbind(const name from, const asset quantity)
+drops::generate_return_value drops::do_unbind(const name account, const asset tokens_received)
 {
    check_is_enabled();
 
    // Find the unbind request of the owner
    unbind_table unbinds(get_self(), get_self().value);
-   auto&        unbind = unbinds.get(from.value, "No unbind request found for account.");
+   auto&        unbind = unbinds.get(account.value, "No unbind request found for account.");
 
    // Calculate amount of RAM needing to be purchased
    // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
@@ -97,31 +92,26 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
 
    // Recreate all selected drops with new bound value (false)
    for (const uint64_t drop_id : drops_ids) {
-      modify_ram_payer(drop_id, from, get_self());
+      modify_ram_payer(drop_id, account, get_self());
    }
 
    // Calculate the purchase cost via bancor after the purchase to ensure the
    // incoming transfer can cover it
    const asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
-   check(quantity.amount >= ram_purchase_cost.amount,
+   check(tokens_received.amount >= ram_purchase_cost.amount,
          "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
-   // Calculate any remaining tokens from the transfer after the RAM purchase
-   const int64_t remainder = quantity.amount - ram_purchase_cost.amount;
-
-   // Return any remaining tokens to the sender
-   if (remainder > 0) {
-      transfer_tokens(from, asset{remainder, EOS}, "");
-   }
+   // Refund any remaining tokens to the sender
+   asset refunded = refund_remaining_tokens(account, tokens_received, ram_purchase_cost);
 
    // Destroy the unbind request now that its complete
    unbinds.erase(unbind);
 
    return {
-      0,                     // drops bought
-      ram_purchase_cost,     // cost
-      asset{remainder, EOS}, // refund
-      0,                     // total drops
+      0,                 // drops bought
+      ram_purchase_cost, // cost
+      refunded,          // refund
+      0,                 // total drops
    };
 }
 
@@ -138,6 +128,15 @@ drops::generate_return_value drops::do_unbind(const name from, const asset quant
       asset{0, EOS},    // refund
       amount,           // total drops
    };
+}
+
+asset drops::refund_remaining_tokens(const name account, const asset tokens_received, const asset tokens_spent)
+{
+   int64_t remainder = tokens_received.amount - tokens_spent.amount;
+   if (remainder > 0) {
+      transfer_tokens(account, asset{remainder, EOS}, "");
+   }
+   return asset{remainder, EOS};
 }
 
 void drops::emplace_drops(const name ram_payer, const name owner, const string data, const uint64_t amount)
