@@ -35,10 +35,10 @@ function getBalance(account: string) {
     return Asset.from(contracts.token.tables.accounts(scope).getTableRow(primary_key).balance)
 }
 
-function getDrop(seed: bigint): DropsContract.Types.drop_row | undefined {
+function getDrop(seed: bigint): DropsContract.Types.drop_row {
     const scope = Name.from(core_contract).value.value
     const row = contracts.core.tables.drop(scope).getTableRow(seed)
-    if (!row) return undefined
+    if (!row) throw new Error('Drop not found')
     return DropsContract.Types.drop_row.from(row)
 }
 
@@ -190,7 +190,7 @@ describe(core_contract, () => {
         expect(transfer.memo).toBe('Reclaimed RAM value of 2 drops(s)')
         expect(after.units.value - before.units.value).toBe(1157)
         expect(getDrops(alice).length).toBe(8)
-        expect(getDrop(6530728038117924388n)).toBeUndefined()
+        expect(() => getDrop(6530728038117924388n)).toThrow('Drop not found')
     })
 
     test('destroy::error - not found', async () => {
