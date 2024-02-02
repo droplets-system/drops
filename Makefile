@@ -16,11 +16,25 @@ test: node_modules build
 	bun test
 
 .PHONY: check
-check: node_modules
+check: cppcheck jscheck
+
+.PHONY: cppcheck
+cppcheck: 
+	clang-format --dry-run --Werror src/*.cpp include/drops/*.hpp
+
+.PHONY: jscheck
+jscheck: node_modules
 	@${BIN}/eslint src --ext .ts --max-warnings 0 --format unix && echo "Ok"
 
 .PHONY: format
-format: node_modules
+format: cppformat jsformat
+
+.PHONY: cppformat
+cppformat:
+	clang-format -i src/*.cpp include/drops/*.hpp
+
+.PHONY: jsformat
+jsformat: node_modules
 	@${BIN}/eslint src --ext .ts --fix
 
 .PHONY: distclean
