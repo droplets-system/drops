@@ -12,14 +12,28 @@ clean:
 	rm -rf build
 
 .PHONY: test
-test: node_modules build
+test: build node_modules test/codegen
 	bun test
+
+test/codegen: test/codegen/dir build/codegen/drops.ts build/codegen/eosio.ts build/codegen/eosio.token.ts 
+
+test/codegen/dir:
+	mkdir -p build/codegen
+
+build/codegen/drops.ts:
+	npx @wharfkit/cli generate --json ./build/drops.abi --file ./build/codegen/drops.ts drops
+
+build/codegen/eosio.ts:
+	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./build/codegen/eosio.ts eosio
+
+build/codegen/eosio.token.ts:
+	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./build/codegen/eosio.token.ts eosio.token
 
 .PHONY: check
 check: cppcheck jscheck
 
 .PHONY: cppcheck
-cppcheck:
+cppcheck: 
 	clang-format --dry-run --Werror src/*.cpp include/drops/*.hpp
 
 .PHONY: jscheck

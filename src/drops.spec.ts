@@ -1,6 +1,9 @@
-import {Asset, Name, TimePointSec} from '@greymass/eosio'
+import {Asset, Name, TimePointSec} from '@wharfkit/antelope'
 import {Blockchain, expectToThrow} from '@proton/vert'
 import {beforeEach, describe, expect, test} from 'bun:test'
+
+import * as DropsContract from '../build/codegen/drops.ts'
+import * as TokenContract from '../build/codegen/eosio.token.ts'
 
 // Vert EOS VM
 const blockchain = new Blockchain()
@@ -21,34 +24,9 @@ const contracts = {
     system: blockchain.createContract('eosio', 'include/eosio.system/eosio', true),
 }
 
-interface State {
-    genesis: string
-    bytes_per_drop: number
-    enabled: boolean
-}
-
-function getState() {
+function getState(): DropsContract.Types.state_row {
     const scope = Name.from(core_contract).value.value
-    return contracts.core.tables.state(scope).getTableRows()[0] as State
-}
-
-interface Drop {
-    seed: string
-    owner: string
-    created: string
-    bound: boolean
-}
-
-interface Transfer {
-    from: Name
-    to: Name
-    quantity: Asset
-    memo: string
-}
-
-interface Unbind {
-    owner: string
-    drops_ids: string[]
+    return contracts.core.tables.state(scope).getTableRows()[0]
 }
 
 function getBalance(account: string) {
@@ -57,21 +35,23 @@ function getBalance(account: string) {
     return Asset.from(contracts.token.tables.accounts(scope).getTableRow(primary_key).balance)
 }
 
-function getDrop(seed: bigint) {
+function getDrop(seed: bigint): DropsContract.Types.drop_row | undefined {
     const scope = Name.from(core_contract).value.value
-    return contracts.core.tables.drop(scope).getTableRow(seed) as Drop
+    const row = contracts.core.tables.drop(scope).getTableRow(seed)
+    if (!row) return undefined
+    return DropsContract.Types.drop_row.from(row)
 }
 
-function getDrops(owner?: string) {
+function getDrops(owner?: string): DropsContract.Types.drop_row[] {
     const scope = Name.from(core_contract).value.value
-    const rows = contracts.core.tables.drop(scope).getTableRows() as Drop[]
+    const rows = contracts.core.tables.drop(scope).getTableRows()
     if (!owner) return rows
     return rows.filter((row) => row.owner === owner)
 }
 
-function getUnbind(owner?: string) {
+function getUnbind(owner?: string): DropsContract.Types.unbind_row[] {
     const scope = Name.from(core_contract).value.value
-    const rows = contracts.core.tables.unbind(scope).getTableRows() as Unbind[]
+    const rows = contracts.core.tables.unbind(scope).getTableRows()
     if (!owner) return rows
     return rows.filter((row) => row.owner === owner)
 }
@@ -116,12 +96,14 @@ describe(core_contract, () => {
 
         expect(after.units.value - before.units.value).toBe(-5847)
         expect(getDrops(alice).length).toBe(10)
-        expect(getDrop(6530728038117924388n)).toEqual({
-            seed: '6530728038117924388',
-            owner: 'alice',
-            created: '2024-01-29T00:00:00.000',
-            bound: false,
-        })
+        expect(
+            getDrop(6530728038117924388n).equals({
+                seed: '6530728038117924388',
+                owner: 'alice',
+                created: '2024-01-29T00:00:00.000',
+                bound: false,
+            })
+        ).toBeTrue()
     })
 
     test('on_transfer::error - empty memo', async () => {
@@ -159,12 +141,14 @@ describe(core_contract, () => {
         await contracts.core.actions.mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb']).send(bob)
 
         expect(getDrops(bob).length).toBe(1)
-        expect(getDrop(10272988527514872302n)).toEqual({
-            seed: '10272988527514872302',
-            owner: 'bob',
-            created: '2024-01-29T00:00:00.000',
-            bound: true,
-        })
+        expect(
+            getDrop(10272988527514872302n).equals({
+                seed: '10272988527514872302',
+                owner: 'bob',
+                created: '2024-01-29T00:00:00.000',
+                bound: true,
+            })
+        ).toBeTrue()
     })
 
     test('mint::error - already exists', async () => {
@@ -200,7 +184,7 @@ describe(core_contract, () => {
             .destroy([alice, ['6530728038117924388', '8833355934996727321'], 'memo'])
             .send(alice)
         const after = getBalance(alice)
-        const transfer: Transfer = blockchain.actionTraces[2].decodedData as any
+        const transfer = TokenContract.Types.transfer.from(blockchain.actionTraces[2].decodedData)
 
         expect(transfer.quantity.units.value.toNumber()).toBe(1157)
         expect(transfer.memo).toBe('Reclaimed RAM value of 2 drops(s)')
