@@ -3,8 +3,8 @@ import {TimePointSec} from '@greymass/eosio'
 import {Blockchain, expectToThrow} from '@proton/vert'
 import {beforeEach, describe, expect, test} from 'bun:test'
 
-import * as DropsContract from '../build/codegen/drops.ts'
-import * as TokenContract from '../build/codegen/eosio.token.ts'
+import * as DropsContract from '../build/drops.ts'
+import * as TokenContract from '../codegen/eosio.token.ts'
 
 // Vert EOS VM
 const blockchain = new Blockchain()
