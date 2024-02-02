@@ -35,7 +35,7 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
       check(parsed.size() == 2, ERROR_INVALID_MEMO);
 
       const int64_t amount = to_number(parsed[0]);
-      check(amount > 0, "amount must be a positive value.");
+      check(amount > 0, "The drops amount must be a positive value.");
       const string data = parsed[1];
       return do_generate(from, quantity, amount, data);
    }
