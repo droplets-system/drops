@@ -1,4 +1,5 @@
-import {Asset, Name, TimePointSec} from '@wharfkit/antelope'
+import {Asset, Name} from '@wharfkit/antelope'
+import {TimePointSec} from '@greymass/eosio'
 import {Blockchain, expectToThrow} from '@proton/vert'
 import {beforeEach, describe, expect, test} from 'bun:test'
 
