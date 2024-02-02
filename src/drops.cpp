@@ -25,6 +25,7 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    check(get_first_receiver() == "eosio.token"_n, "Only the eosio.token contract may send tokens to this contract.");
    check(quantity.symbol == EOS, "Only the system token is accepted for transfers.");
    check(!memo.empty(), ERROR_INVALID_MEMO);
+   check_is_enabled(get_self());
 
    // Process the memo field by comma delimiting the string
    // Memo payload must contain to 2 fields
@@ -53,6 +54,9 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 {
    require_auth(owner);
    check_is_enabled(get_self());
+
+   // TO-DO handle bound/unbound drops
+   // ADD ram payer to `generate` action
 
    // generating drops consumes RAM to owner
    const int64_t bytes = amount * get_bytes_per_drop();

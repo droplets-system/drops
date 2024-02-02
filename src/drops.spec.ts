@@ -25,10 +25,18 @@ function getState(): DropsContract.Types.state_row {
     return contracts.core.tables.state(scope).getTableRows()[0]
 }
 
-function getBalance(account: string) {
+function getTokenBalance(account: string) {
     const scope = Name.from(account).value.value
     const primary_key = Asset.SymbolCode.from('EOS').value.value
     return Asset.from(contracts.token.tables.accounts(scope).getTableRow(primary_key).balance)
+}
+
+function getBalance(owner: string) {
+    const scope = Name.from(core_contract).value.value
+    const primary_key = Name.from(owner).value.value
+    const row = contracts.core.tables.balances(scope).getTableRow(primary_key)
+    if (!row) throw new Error('Balance not found')
+    return DropsContract.Types.balances_row.from(row)
 }
 
 function getDrop(seed: bigint): DropsContract.Types.drop_row {
@@ -83,29 +91,35 @@ describe(core_contract, () => {
         expect(getState().enabled).toBe(true)
     })
 
+    test('open', async () => {
+        try {
+            getBalance(alice)
+        } catch (error) {
+            expect(error.message).toBe('Balance not found')
+        }
+        await contracts.core.actions.open([alice]).send(alice)
+        await contracts.core.actions.open([bob]).send(bob)
+        const balance = getBalance(alice)
+        if (balance) {
+            expect(balance.owner.toString()).toBe(alice)
+            expect(balance.ram_bytes.toNumber()).toBe(0)
+            expect(balance.drops.toNumber()).toBe(0)
+        }
+    })
+
     test('on_transfer', async () => {
         const before = getBalance(alice)
         await contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', '10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])
+            .transfer([alice, core_contract, '10.0000 EOS', `buyram,${alice}`])
             .send(alice)
         const after = getBalance(alice)
-
-        expect(after.units.value - before.units.value).toBe(-5847)
-        expect(getDrops(alice).length).toBe(10)
-        expect(
-            getDrop(6530728038117924388n).equals({
-                seed: '6530728038117924388',
-                owner: 'alice',
-                created: '2024-01-29T00:00:00.000',
-                bound: false,
-            })
-        ).toBeTrue()
+        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(87990)
     })
 
     test('on_transfer::error - contract disabled', async () => {
         await contracts.core.actions.enable([false]).send()
         const action = contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', '10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])
+            .transfer([alice, core_contract, '10.0000 EOS', `buyram,${alice}`])
             .send(alice)
         await expectToThrow(action, ERROR_SYSTEM_DISABLED)
     })
@@ -117,32 +131,20 @@ describe(core_contract, () => {
         await expectToThrow(action, ERROR_INVALID_MEMO)
     })
 
-    test('on_transfer::error - invalid number', async () => {
+    test('on_transfer::error - receiver must be sender', async () => {
         const action = contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', 'foo,bar'])
+            .transfer([alice, core_contract, '10.0000 EOS', `buyram,${bob}`])
             .send(alice)
-        await expectToThrow(action, 'eosio_assert: invalid number format or overflow')
+        await expectToThrow(action, 'eosio_assert: Receiver must be the same as the sender.')
     })
 
-    test('on_transfer::error - number underflow', async () => {
-        const action = contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', '-1,bar'])
-            .send(alice)
-        await expectToThrow(action, 'eosio_assert: number underflow')
-    })
+    test('generate', async () => {
+        await contracts.token.actions
+            .transfer([bob, core_contract, '100.0000 EOS', `buyram,${bob}`])
+            .send(bob)
 
-    test('on_transfer::error - at least 32 characters', async () => {
-        const action = contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', '1,foobar'])
-            .send(alice)
-        await expectToThrow(
-            action,
-            'eosio_assert: Drop data must be at least 32 characters in length.'
-        )
-    })
-
-    test('mint', async () => {
-        await contracts.core.actions.mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb']).send(bob)
+        const data = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+        await contracts.core.actions.generate([bob, 1, data]).send(bob)
 
         expect(getDrops(bob).length).toBe(1)
         expect(
@@ -155,9 +157,9 @@ describe(core_contract, () => {
         ).toBeTrue()
     })
 
-    test('mint::error - already exists', async () => {
+    test('generate::error - already exists', async () => {
         const action = contracts.core.actions
-            .mint([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+            .generate([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
             .send(bob)
 
         await expectToThrow(
@@ -166,15 +168,18 @@ describe(core_contract, () => {
         )
     })
 
-    test('mint 1K', async () => {
-        await contracts.core.actions.mint([bob, 1000, 'cccccccccccccccccccccccccccccccc']).send(bob)
+    test('generate 1K', async () => {
+        const before = getBalance(bob)
+        await contracts.core.actions.generate([bob, 1000, 'cccccccccccccccccccccccccccccccc']).send(bob)
+        const after = getBalance(bob)
 
         expect(getDrops(bob).length).toBe(1001)
+        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-512000)
     })
 
     test('on_transfer::error - invalid contract', async () => {
         const action = contracts.fake.actions
-            .transfer([alice, core_contract, '10.0000 EOS', '10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])
+            .transfer([alice, core_contract, '10.0000 EOS', 'buyram,alice'])
             .send(alice)
         await expectToThrow(
             action,
@@ -183,16 +188,13 @@ describe(core_contract, () => {
     })
 
     test('destroy', async () => {
+        await contracts.core.actions.generate([alice, 10, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']).send(alice)
         const before = getBalance(alice)
         await contracts.core.actions
             .destroy([alice, ['6530728038117924388', '8833355934996727321'], 'memo'])
             .send(alice)
         const after = getBalance(alice)
-        const transfer = TokenContract.Types.transfer.from(blockchain.actionTraces[2].decodedData)
-
-        expect(transfer.quantity.units.value.toNumber()).toBe(1157)
-        expect(transfer.memo).toBe('Reclaimed RAM value of 2 drops(s)')
-        expect(after.units.value - before.units.value).toBe(1157)
+        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(1024)
         expect(getDrops(alice).length).toBe(8)
         expect(() => getDrop(6530728038117924388n)).toThrow('Drop not found')
     })
@@ -223,16 +225,13 @@ describe(core_contract, () => {
         const before = getBalance(bob)
         expect(getDrop(10272988527514872302n).bound).toBeTruthy()
         await contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
-        await contracts.token.actions
-            .transfer([bob, core_contract, '10.0000 EOS', 'unbind'])
-            .send(bob)
 
         // drop must now be unbound
         expect(getDrop(10272988527514872302n).bound).toBeFalsy()
         const after = getBalance(bob)
 
         // EOS returned for excess RAM
-        expect(after.units.value - before.units.value).toBe(-583)
+        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(-583)
     })
 
     test('unbind::error - not found', async () => {
