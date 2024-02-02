@@ -12,11 +12,6 @@ const bob = 'bob'
 const alice = 'alice'
 blockchain.createAccounts(bob, alice)
 
-// one-time setup
-beforeEach(async () => {
-    blockchain.setTime(TimePointSec.from('2024-01-29T00:00:00.000'))
-})
-
 const core_contract = 'drops'
 const contracts = {
     core: blockchain.createContract(core_contract, `build/${core_contract}`, true),
@@ -60,6 +55,12 @@ function getUnbind(owner?: string): DropsContract.Types.unbind_row[] {
 const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<amount>,<data>")`
 
 describe(core_contract, () => {
+    // Setup before each test
+    beforeEach(async () => {
+        blockchain.setTime(TimePointSec.from('2024-01-29T00:00:00.000'))
+        await contracts.core.actions.enable([true]).send()
+    })
+
     test('eosio::init', async () => {
         await contracts.system.actions.init([]).send()
     })
