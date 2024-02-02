@@ -2,7 +2,7 @@ SHELL := /bin/bash
 TEST_FILES := $(shell find src -name '*.ts')
 BIN := ./node_modules/.bin
 
-build:  | build/dir
+build: | build/dir
 	cdt-cpp -abigen -abigen_output=build/drops.abi -o build/drops.wasm src/drops.cpp -R src -I include -D DEBUG
 
 build/dir:
@@ -12,14 +12,28 @@ clean:
 	rm -rf build
 
 .PHONY: test
-test: node_modules build
+test: build node_modules build/drops.ts init/codegen
 	bun test
+
+init/codegen: codegen/dir codegen/eosio.ts codegen/eosio.token.ts 
+
+build/drops.ts: 
+	npx @wharfkit/cli generate --json ./build/drops.abi --file ./build/drops.ts drops
+
+codegen/dir:
+	mkdir -p codegen
+
+codegen/eosio.ts:
+	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./codegen/eosio.ts eosio
+
+codegen/eosio.token.ts:
+	npx @wharfkit/cli generate --url https://jungle4.greymass.com --file ./codegen/eosio.token.ts eosio.token
 
 .PHONY: check
 check: cppcheck jscheck
 
 .PHONY: cppcheck
-cppcheck:
+cppcheck: 
 	clang-format --dry-run --Werror src/*.cpp include/drops/*.hpp
 
 .PHONY: jscheck
