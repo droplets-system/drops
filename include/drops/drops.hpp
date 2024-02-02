@@ -180,6 +180,7 @@ private:
    void  buy_ram_bytes(int64_t bytes);
    void  sell_ram_bytes(int64_t bytes);
    asset refund_remaining_tokens(const name account, const asset tokens_received, const asset tokens_spent);
+   asset buy_required_ram(const int64_t drop_quantity, const asset tokens_received);
 
    void check_is_enabled();
    void check_drop_owner(const drop_row drop, const name owner);

@@ -45,22 +45,11 @@ drops::do_generate(const name account, const asset tokens_received, const uint64
 {
    check_is_enabled();
 
-   // Calculate amount of RAM needing to be purchased
-   // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
-   // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   int64_t ram_purchase_amount = drop_quantity * get_bytes_per_drop();
-
-   // Purchase the RAM for this transaction using the tokens from the transfer
-   buy_ram_bytes(ram_purchase_amount);
+   // Buy the required RAM for the bound drops
+   const asset ram_purchase_cost = buy_required_ram(drop_quantity, tokens_received);
 
    // Iterate over all drops to be created and insert them into the drop table
    emplace_drops(get_self(), account, data, drop_quantity);
-
-   // Calculate the purchase cost via bancor after the purchase to ensure the
-   // incoming transfer can cover it
-   asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
-   check(tokens_received.amount >= ram_purchase_cost.amount,
-         "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
    // Refund any remaining tokens to the sender
    asset refunded = refund_remaining_tokens(account, tokens_received, ram_purchase_cost);
@@ -78,28 +67,17 @@ drops::generate_return_value drops::do_unbind(const name account, const asset to
    check_is_enabled();
 
    // Find the unbind request of the owner
-   unbind_table unbinds(get_self(), get_self().value);
-   auto&        unbind = unbinds.get(account.value, "No unbind request found for account.");
+   unbind_table           unbinds(get_self(), get_self().value);
+   auto&                  unbind    = unbinds.get(account.value, "No unbind request found for account.");
+   const vector<uint64_t> drops_ids = unbind.drops_ids;
 
-   // Calculate amount of RAM needing to be purchased
-   // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
-   // SEE: https://github.com/EOSIO/eosio.system/issues/30
-   const vector<uint64_t> drops_ids           = unbind.drops_ids;
-   const int64_t          ram_purchase_amount = drops_ids.size() * get_bytes_per_drop();
-
-   // Purchase the RAM for this transaction using the tokens from the transfer
-   buy_ram_bytes(ram_purchase_amount);
+   // Buy the required RAM for the bound drops
+   const asset ram_purchase_cost = buy_required_ram(drops_ids.size(), tokens_received);
 
    // Recreate all selected drops with new bound value (false)
    for (const uint64_t drop_id : drops_ids) {
       modify_ram_payer(drop_id, account, get_self());
    }
-
-   // Calculate the purchase cost via bancor after the purchase to ensure the
-   // incoming transfer can cover it
-   const asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
-   check(tokens_received.amount >= ram_purchase_cost.amount,
-         "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
 
    // Refund any remaining tokens to the sender
    asset refunded = refund_remaining_tokens(account, tokens_received, ram_purchase_cost);
@@ -210,6 +188,25 @@ void drops::modify_owner(const uint64_t drop_id, const name current_owner, const
       check(row.owner != new_owner, "Drop owner was not modified");
       row.owner = new_owner;
    });
+}
+
+asset drops::buy_required_ram(const int64_t drop_quantity, const asset tokens_received)
+{
+   // Calculate amount of RAM needing to be purchased
+   // NOTE: Additional RAM is being purchased to account for the buyrambytes bug
+   // SEE: https://github.com/EOSIO/eosio.system/issues/30
+   int64_t ram_purchase_amount = drop_quantity * get_bytes_per_drop();
+
+   // Calculate the purchase cost via bancor after the purchase to ensure the
+   // incoming transfer can cover it
+   asset ram_purchase_cost = eosiosystem::ram_cost_with_fee(ram_purchase_amount, EOS);
+   check(tokens_received.amount >= ram_purchase_cost.amount,
+         "The amount sent does not cover the RAM purchase cost (requires " + ram_purchase_cost.to_string() + ")");
+
+   // Purchase the RAM for this transaction using the tokens from the transfer
+   buy_ram_bytes(ram_purchase_amount);
+
+   return ram_purchase_cost;
 }
 
 void drops::buy_ram_bytes(const int64_t bytes)
