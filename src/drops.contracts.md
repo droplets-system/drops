@@ -42,24 +42,35 @@ icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897
 
 ---
 
-<h1 class="contract">mint</h1>
+<h1 class="contract">generate</h1>
 
 ---
 
 spec_version: "0.2.0"
-title: mint
-summary: mint
+title: generate
+summary: generate
 icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
 
 ---
 
-<h1 class="contract">cancelunbind</h1>
+<h1 class="contract">open</h1>
 
 ---
 
 spec_version: "0.2.0"
-title: cancelunbind
-summary: cancelunbind
+title: open
+summary: open
+icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
+
+---
+
+<h1 class="contract">claim</h1>
+
+---
+
+spec_version: "0.2.0"
+title: claim
+summary: claim
 icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
 
 ---

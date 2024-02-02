@@ -41,6 +41,28 @@ double round_to(double value, double precision = 1.0, bool up = false)
    }
 }
 
+asset get_fee(const asset quantity)
+{
+   asset fee  = quantity;
+   fee.amount = (fee.amount + 199) / 200; /// .5% fee (round up)
+   return fee;
+}
+
+int64_t bytes_cost_with_fee(const asset quantity)
+{
+   name      system_account = "eosio"_n;
+   rammarket _rammarket(system_account, system_account.value);
+
+   const asset fee                = get_fee(quantity);
+   const asset quantity_after_fee = quantity - fee;
+
+   auto          itr         = _rammarket.find(system_contract::ramcore_symbol.raw());
+   const int64_t ram_reserve = itr->base.balance.amount;
+   const int64_t eos_reserve = itr->quote.balance.amount;
+   const int64_t cost        = get_bancor_input(eos_reserve, ram_reserve, quantity.amount);
+   return cost;
+}
+
 asset ram_cost(uint32_t bytes, symbol core_symbol)
 {
    name          system_account = "eosio"_n;

@@ -45,13 +45,6 @@ function getDrops(owner?: string): DropsContract.Types.drop_row[] {
     return rows.filter((row) => row.owner === owner)
 }
 
-function getUnbind(owner?: string): DropsContract.Types.unbind_row[] {
-    const scope = Name.from(core_contract).value.value
-    const rows = contracts.core.tables.unbind(scope).getTableRows()
-    if (!owner) return rows
-    return rows.filter((row) => row.owner === owner)
-}
-
 const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<amount>,<data>")`
 const ERROR_SYSTEM_DISABLED = 'eosio_assert_message: Drops system is disabled.'
 
@@ -292,18 +285,5 @@ describe(core_contract, () => {
             action,
             'eosio_assert_message: Drop 10272988527514872302 is not unbound'
         )
-    })
-
-    test('cancelunbind', async () => {
-        expect(getUnbind(bob).length).toBe(0)
-        await contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
-        expect(getUnbind(bob).length).toBe(1)
-        await contracts.core.actions.cancelunbind([bob]).send(bob)
-        expect(getUnbind(bob).length).toBe(0)
-    })
-
-    test('cancelunbind::error - No unbind request', async () => {
-        const action = contracts.core.actions.cancelunbind([bob]).send(bob)
-        await expectToThrow(action, 'eosio_assert: No unbind request found for account.')
     })
 })

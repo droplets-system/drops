@@ -39,3 +39,37 @@
     "enabled": false
 }
 ```
+
+## TABLE `balances`
+
+### params
+
+- `{name} owner` - (primary key) owner account
+- `{uint64_t} drops` - total amount of drops owned
+- `{int64_t} ram_bytes` - total amount of RAM bytes available by the owner
+
+### example
+
+```json
+{
+    "owner": "test.gm",
+    "drops": 69,
+    "ram_bytes": 2048
+}
+```
+
+## TABLE `stat`
+
+### params
+
+- `{uint64_t} drops` - total supply of drops
+- `{int64_t} ram_bytes` - total available RAM bytes held by the contract
+
+### example
+
+```json
+{
+    "drops": 88888,
+    "ram_bytes": 2048
+}
+```
