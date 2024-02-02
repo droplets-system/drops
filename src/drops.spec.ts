@@ -53,6 +53,7 @@ function getUnbind(owner?: string): DropsContract.Types.unbind_row[] {
 }
 
 const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<amount>,<data>")`
+const ERROR_SYSTEM_DISABLED = 'eosio_assert_message: Drops system is disabled.'
 
 describe(core_contract, () => {
     // Setup before each test
@@ -106,6 +107,14 @@ describe(core_contract, () => {
                 bound: false,
             })
         ).toBeTrue()
+    })
+
+    test('on_transfer::error - contract disabled', async () => {
+        await contracts.core.actions.enable([false]).send()
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', ''])
+            .send(alice)
+        await expectToThrow(action, ERROR_SYSTEM_DISABLED)
     })
 
     test('on_transfer::error - empty memo', async () => {
