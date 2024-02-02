@@ -112,7 +112,7 @@ describe(core_contract, () => {
     test('on_transfer::error - contract disabled', async () => {
         await contracts.core.actions.enable([false]).send()
         const action = contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', ''])
+            .transfer([alice, core_contract, '10.0000 EOS', '10,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])
             .send(alice)
         await expectToThrow(action, ERROR_SYSTEM_DISABLED)
     })
