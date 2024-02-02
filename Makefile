@@ -19,7 +19,7 @@ test: node_modules build
 check: cppcheck jscheck
 
 .PHONY: cppcheck
-cppcheck: 
+cppcheck:
 	clang-format --dry-run --Werror src/*.cpp include/drops/*.hpp
 
 .PHONY: jscheck

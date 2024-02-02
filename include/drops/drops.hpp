@@ -171,22 +171,21 @@ public:
 private:
    generate_return_value do_generate(const name from, const asset quantity, const uint64_t amount, const string data);
    generate_return_value do_unbind(const name from, const asset quantity);
-   void                  check_is_enabled();
-   int64_t               get_bytes_per_drop();
-   uint64_t              hash_data(const string data);
-   void emplace_drops(const name ram_payer, const name owner, const string data, const uint64_t amount);
+
+   int64_t  get_bytes_per_drop();
+   uint64_t hash_data(const string data);
 
    void transfer_tokens(const name to, const asset quantity, const string memo);
    void transfer_ram(const name to, const int64_t bytes, const string memo);
-
    void buy_ram_bytes(int64_t bytes);
    void sell_ram_bytes(int64_t bytes);
 
-   void     modify_ram_payer(const uint64_t drop_id, const name ram_payer);
-   void     check_drop_owner(const uint64_t drop_id, const name owner);
-   void     check_drop_bound(const uint64_t drop_id, const bool bound);
-   drop_row get_drop(const uint64_t drop_id);
-   void     modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
+   void check_is_enabled();
+   void check_drop_owner(const drop_row drop, const name owner);
+   void check_drop_bound(const drop_row drop, const bool bound);
+   void modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
+   void modify_ram_payer(const uint64_t drop_id, const name owner, const name ram_payer);
+   void emplace_drops(const name ram_payer, const name owner, const string data, const uint64_t amount);
 
    // utils
    vector<string> split(const string& str, const char delim);
