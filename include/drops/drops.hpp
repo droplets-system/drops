@@ -172,10 +172,46 @@ public:
    // @user
    [[eosio::action]] int64_t unbind(const name owner, const vector<uint64_t> drops_ids);
 
-   // @user
+   /**
+    * ## ACTION `open`
+    *
+    * - **authority**: `owner`
+    *
+    * Opens balances table row for owner account.
+    * Transaction silent pass if balances already opened.
+    * Action must be auth'ed by owner to prove ownership before accepting RAM bytes deposits.
+    *
+    * ### params
+    *
+    * - `{name} owner` - owner account to open balances
+    *
+    * ### example
+    *
+    * ```bash
+    * $ cleos push action core.drops open '["alice"]' -p alice
+    * ```
+    */
    [[eosio::action]] bool open(const name owner);
 
-   // @user
+   /**
+    * ## ACTION `claim`
+    *
+    * - **authority**: `owner`
+    *
+    * Returns any available RAM balance on contract balances to owner.
+    * Transaction silently passes if RAM bytes is 0.
+    * Owner is the recipient of claimable bytes (cannot claim for another account).
+    *
+    * ### params
+    *
+    * - `{name} owner` - owner account to claim RAM bytes
+    *
+    * ### example
+    *
+    * ```bash
+    * $ cleos push action core.drops claim '["alice"]' -p alice
+    * ```
+    */
    [[eosio::action]] int64_t claim(const name owner);
 
    // @admin
