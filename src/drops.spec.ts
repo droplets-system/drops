@@ -173,7 +173,7 @@ describe(core_contract, () => {
         const after = getBalance(bob)
 
         // should consume RAM bytes
-        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-512)
+        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-277)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1)
         expect(
             getDrop(10272988527514872302n).equals({
@@ -287,7 +287,7 @@ describe(core_contract, () => {
         const after = getBalance(bob)
 
         // deduct RAM bytes to unbind drops
-        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(-512)
+        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(-277)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(0)
     })
 
@@ -325,7 +325,7 @@ describe(core_contract, () => {
         const after = getBalance(bob)
 
         // returned for excess RAM bytes
-        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(512)
+        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(277)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(0)
     })
 

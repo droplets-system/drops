@@ -75,7 +75,7 @@ public:
     * ```json
     * {
     *   "genesis": "2024-01-29T00:00:00",
-    *   "bytes_per_drop": 512,
+    *   "bytes_per_drop": 277,
     *   "enabled": true
     * }
     * ```
@@ -83,7 +83,7 @@ public:
    struct [[eosio::table("state")]] state_row
    {
       block_timestamp genesis        = current_block_time();
-      int64_t         bytes_per_drop = 512; // 144 bytes primary row + 368 bytes secondary row
+      int64_t         bytes_per_drop = 277; // 133 bytes primary row + 144 bytes secondary row
       bool            enabled        = true;
    };
 
