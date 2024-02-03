@@ -12,6 +12,21 @@ public:
     using contract::contract;
 
     /**
+     * Buy ram action, increases receiver's ram quota based upon current price and quantity of
+     * tokens provided. An inline transfer from receiver to system contract of
+     * tokens will be executed.
+     *
+     * @param payer - the ram buyer,
+     * @param receiver - the ram receiver,
+     * @param quant - the quantity of tokens to buy ram with.
+     */
+    [[eosio::action]]
+    void buyram( const name& payer, const name& receiver, const asset& quant )
+    {
+        print("noop");
+    }
+
+    /**
      * Buy a specific amount of ram bytes action. Increases receiver's ram in quantity of bytes provided.
      * An inline transfer from receiver to system contract of tokens will be executed.
      *
@@ -38,6 +53,20 @@ public:
         print("noop");
     }
 
+    /**
+     * Transfer ram action, reduces sender's quota by bytes and increase receiver's quota by bytes.
+     *
+     * @param from - the ram sender account,
+     * @param to - the ram receiver account,
+     * @param bytes - the amount of ram to transfer in bytes,
+     * @param memo - the memo string to accompany the transaction.
+     */
+    [[eosio::action]]
+    void ramtransfer( const name& from, const name& to, int64_t bytes, const std::string& memo )
+    {
+        print("noop");
+    }
+
     [[eosio::action]]
     void init()
     {
@@ -59,6 +88,8 @@ public:
     // action wrappers
     using sellram_action = eosio::action_wrapper<"sellram"_n, &system_contract::sellram>;
     using buyrambytes_action = eosio::action_wrapper<"buyrambytes"_n, &system_contract::buyrambytes>;
+    using buyram_action = eosio::action_wrapper<"buyram"_n, &system_contract::buyram>;
+    using ramtransfer_action = eosio::action_wrapper<"ramtransfer"_n, &system_contract::ramtransfer>;
 
     struct [[eosio::table, eosio::contract("eosio.system")]] exchange_state {
         asset    supply;

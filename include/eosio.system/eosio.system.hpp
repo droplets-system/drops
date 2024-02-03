@@ -1100,6 +1100,17 @@ namespace eosiosystem {
          void buyram( const name& payer, const name& receiver, const asset& quant );
 
          /**
+          * Transfer ram action, reduces sender's quota by bytes and increase receiver's quota by bytes.
+          *
+          * @param from - the ram sender account,
+          * @param to - the ram receiver account,
+          * @param bytes - the amount of ram to transfer in bytes,
+          * @param memo - the memo string to accompany the transaction.
+          */
+         [[eosio::action]]
+         void ramtransfer( const name& from, const name& to, int64_t bytes, const std::string& memo );
+
+         /**
           * Buy a specific amount of ram bytes action. Increases receiver's ram in quantity of bytes provided.
           * An inline transfer from receiver to system contract of tokens will be executed.
           *
@@ -1416,6 +1427,7 @@ namespace eosiosystem {
          using closerex_action = eosio::action_wrapper<"closerex"_n, &system_contract::closerex>;
          using undelegatebw_action = eosio::action_wrapper<"undelegatebw"_n, &system_contract::undelegatebw>;
          using buyram_action = eosio::action_wrapper<"buyram"_n, &system_contract::buyram>;
+         using ramtransfer_action = eosio::action_wrapper<"ramtransfer"_n, &system_contract::ramtransfer>;
          using buyrambytes_action = eosio::action_wrapper<"buyrambytes"_n, &system_contract::buyrambytes>;
          using sellram_action = eosio::action_wrapper<"sellram"_n, &system_contract::sellram>;
          using refund_action = eosio::action_wrapper<"refund"_n, &system_contract::refund>;
