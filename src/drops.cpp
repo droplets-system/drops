@@ -22,31 +22,26 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
       return 0;
    }
 
+   // validate incoming token transfer
    check(get_first_receiver() == "eosio.token"_n, "Only the eosio.token contract may send tokens to this contract.");
    check(quantity.symbol == EOS, "Only the system token is accepted for transfers.");
    check(!memo.empty(), ERROR_INVALID_MEMO);
    check_is_enabled(get_self());
 
-   // Process the memo field by comma delimiting the string
-   // Memo payload must contain to 2 fields
-   const vector<string> parsed = utils::split(memo, ',');
-   check(parsed.size() >= 2, ERROR_INVALID_MEMO);
-   const string operation = parsed[0];
+   // validate memo
+   const name receiver = utils::parse_name(memo);
+   check(receiver.value, ERROR_INVALID_MEMO); // ensure receiver is not empty & valid Name type
+   check(is_account(receiver), ERROR_ACCOUNT_NOT_EXISTS);
 
-   // Buy RAM: "buyram,<receiver>"
-   // If no receiver, the RAM would be credited to sender
-   if (operation == "buyram") {
-      const name receiver = utils::parse_name(parsed[1]);
+   if (FLAG_FORCE_RECEIVER_TO_BE_SENDER) {
       check(receiver == from, "Receiver must be the same as the sender.");
-
-      // contract purchase bytes and credit to receiver
-      const int64_t bytes = eosiosystem::bytes_cost_with_fee(quantity);
-      buy_ram(quantity);
-      add_ram_bytes(receiver, bytes);
-      return bytes;
    }
-   check(false, ERROR_INVALID_MEMO);
-   return 0;
+
+   // contract purchase bytes and credit to receiver
+   const int64_t bytes = eosiosystem::bytes_cost_with_fee(quantity);
+   buy_ram(quantity);
+   add_ram_bytes(receiver, bytes);
+   return bytes;
 }
 
 // @user

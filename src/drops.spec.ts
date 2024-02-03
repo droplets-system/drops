@@ -68,7 +68,7 @@ function getDrops(owner?: string): DropsContract.Types.drop_row[] {
 }
 
 // standard error messages
-const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<amount>,<data>")`
+const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<receiver>")`
 const ERROR_DROP_NOT_FOUND = 'eosio_assert: Drop not found.'
 const ERROR_SYSTEM_DISABLED = 'eosio_assert_message: Drops system is disabled.'
 const ERROR_OPEN_BALANCE = 'eosio_assert: Account does not have an open balance.'
@@ -130,7 +130,7 @@ describe(core_contract, () => {
         const before = getBalance(alice)
         const tokenBefore = getTokenBalance(alice)
         await contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', `buyram,${alice}`])
+            .transfer([alice, core_contract, '10.0000 EOS', alice])
             .send(alice)
         const after = getBalance(alice)
         const tokenAfter = getTokenBalance(alice)
@@ -143,7 +143,7 @@ describe(core_contract, () => {
     test('on_transfer::error - contract disabled', async () => {
         await contracts.core.actions.enable([false]).send()
         const action = contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', `buyram,${alice}`])
+            .transfer([alice, core_contract, '10.0000 EOS', alice])
             .send(alice)
         await expectToThrow(action, ERROR_SYSTEM_DISABLED)
     })
@@ -157,15 +157,20 @@ describe(core_contract, () => {
 
     test('on_transfer::error - receiver must be sender', async () => {
         const action = contracts.token.actions
-            .transfer([alice, core_contract, '10.0000 EOS', `buyram,${bob}`])
+            .transfer([alice, core_contract, '10.0000 EOS', bob])
             .send(alice)
         await expectToThrow(action, 'eosio_assert: Receiver must be the same as the sender.')
     })
 
+    test('on_transfer::error - account must exists', async () => {
+        const action = contracts.token.actions
+            .transfer([alice, core_contract, '10.0000 EOS', 'foobar'])
+            .send(alice)
+        await expectToThrow(action, ERROR_ACCOUNT_NOT_EXISTS)
+    })
+
     test('generate - bound=false', async () => {
-        await contracts.token.actions
-            .transfer([bob, core_contract, '100.0000 EOS', `buyram,${bob}`])
-            .send(bob)
+        await contracts.token.actions.transfer([bob, core_contract, '100.0000 EOS', bob]).send(bob)
 
         const data = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
         const before = getBalance(bob)

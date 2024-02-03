@@ -15,13 +15,19 @@ namespace dropssystem {
 
 static constexpr symbol EOS = symbol{"EOS", 4};
 
-static const string ERROR_INVALID_MEMO       = "Invalid transfer memo. (ex: \"<amount>,<data>\")";
+// error messages
+static const string ERROR_INVALID_MEMO       = "Invalid transfer memo. (ex: \"<receiver>\")";
 static const string ERROR_DROP_NOT_FOUND     = "Drop not found.";
 static const string ERROR_SYSTEM_DISABLED    = "Drops system is disabled.";
 static const string ERROR_OPEN_BALANCE       = "Account does not have an open balance.";
 static const string ERROR_ACCOUNT_NOT_EXISTS = "Account does not exist.";
 static const string ERROR_NO_DROPS           = "No drops were provided.";
-static const string MEMO_RAM_TRANSFER        = "Claiming RAM bytes.";
+
+// memo messages
+static const string MEMO_RAM_TRANSFER = "Claiming RAM bytes.";
+
+// feature flags
+static const bool FLAG_FORCE_RECEIVER_TO_BE_SENDER = true;
 
 uint128_t combine_ids(const uint64_t& v1, const uint64_t& v2) { return (uint128_t{v1} << 64) | v2; }
 
