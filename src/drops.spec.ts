@@ -28,7 +28,11 @@ function getState(): DropsContract.Types.state_row {
 function getTokenBalance(account: string) {
     const scope = Name.from(account).value.value
     const primary_key = Asset.SymbolCode.from('EOS').value.value
-    return Asset.from(contracts.token.tables.accounts(scope).getTableRow(primary_key).balance)
+    const row = contracts.token.tables
+        .accounts(scope)
+        .getTableRow(primary_key) as TokenContract.Types.account
+    if (!row) throw new Error('Balance not found')
+    return Asset.from(row.balance)
 }
 
 function getBalance(owner: string) {
@@ -109,12 +113,12 @@ describe(core_contract, () => {
 
     test('on_transfer', async () => {
         const before = getBalance(alice)
-        const tokenBefore = getTokenBalance(alice);
+        const tokenBefore = getTokenBalance(alice)
         await contracts.token.actions
             .transfer([alice, core_contract, '10.0000 EOS', `buyram,${alice}`])
             .send(alice)
         const after = getBalance(alice)
-        const tokenAfter = getTokenBalance(alice);
+        const tokenAfter = getTokenBalance(alice)
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(87990)
 
         // should not receive any EOS refunds on transfer
