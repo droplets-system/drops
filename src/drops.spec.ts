@@ -11,7 +11,8 @@ const blockchain = new Blockchain()
 const bob = 'bob'
 const alice = 'alice'
 const charles = 'charles'
-blockchain.createAccounts(bob, alice, charles)
+const daniel = 'daniel'
+blockchain.createAccounts(bob, alice, charles, daniel)
 
 const core_contract = 'drops'
 const contracts = {
@@ -127,14 +128,13 @@ describe(core_contract, () => {
     })
 
     test('on_transfer', async () => {
-        const before = getBalance(alice)
         const tokenBefore = getTokenBalance(alice)
         await contracts.token.actions
             .transfer([alice, core_contract, '10.0000 EOS', alice])
             .send(alice)
         const after = getBalance(alice)
         const tokenAfter = getTokenBalance(alice)
-        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(87990)
+        expect(after.ram_bytes.toNumber() - 0).toBe(87990)
 
         // should not receive any EOS refunds on transfer
         expect(tokenAfter.value - tokenBefore.value).toBe(-10)
@@ -207,6 +207,16 @@ describe(core_contract, () => {
                 bound: true,
             })
         ).toBeTrue()
+    })
+
+    test('generate - with unopened balance', async () => {
+        const data = 'ffffffffffffffffffffffffffffffff'
+        await contracts.core.actions.generate([daniel, true, 1, data]).send(daniel)
+        const after = getBalance(daniel)
+
+        // should not consume any RAM bytes
+        expect(after.ram_bytes.toNumber()).toBe(0)
+        expect(after.drops.toNumber()).toBe(1)
     })
 
     test('generate::error - already exists', async () => {
@@ -387,13 +397,24 @@ describe(core_contract, () => {
         expect(after.stat.drops.value - before.stat.drops.value).toBe(0)
     })
 
-    // TO-DO: could implement `open` logic to allow transfer to unopened accounts
-    // RAM payer would be the sender
     // https://github.com/drops-system/drops/issues/15
-    test('transfer::error - transfer to unopened', async () => {
+    test('transfer - transfer to unopened', async () => {
+        const before = {
+            bob: getBalance(bob),
+        }
         const drop_id = '17855725969634623351'
-        const action = contracts.core.actions.transfer([bob, charles, [drop_id], '']).send(bob)
-        await expectToThrow(action, ERROR_OPEN_BALANCE)
+        await contracts.core.actions.transfer([bob, charles, [drop_id], '']).send(bob)
+        const after = {
+            bob: getBalance(bob),
+            charles: getBalance(charles),
+        }
+        // no RAM bytes should be consumed for either accounts
+        expect(after.bob.ram_bytes.value - before.bob.ram_bytes.value).toBe(0)
+        expect(after.charles.ram_bytes.value.toNumber()).toBe(0)
+
+        // drop should be transferred to bob
+        expect(after.bob.drops.toNumber() - before.bob.drops.toNumber()).toBe(-1)
+        expect(after.charles.drops.toNumber()).toBe(1)
     })
 
     test('transfer::error - account does not exists', async () => {

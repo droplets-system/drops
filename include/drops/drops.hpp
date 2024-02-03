@@ -283,6 +283,8 @@ private:
    void check_drop_bound(const drop_row drop, const bool bound);
    void modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
    void modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound);
+   bool open_balance(const name owner, const name ram_payer);
+   name auth_ram_payer(const name owner);
 
    // create and destroy
    int64_t emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);

@@ -49,6 +49,7 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 {
    require_auth(owner);
    check_is_enabled(get_self());
+   open_balance(owner, owner);
    const int64_t bytes = emplace_drops(owner, bound, amount, data);
    add_drops(owner, amount);
    return bytes;
@@ -113,6 +114,7 @@ drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids
    check(is_account(to), ERROR_ACCOUNT_NOT_EXISTS);
    const int64_t amount = drops_ids.size();
    check(amount > 0, ERROR_NO_DROPS);
+   open_balance(to, from);
    transfer_drops(from, to, amount);
 
    require_recipient(from);
@@ -253,12 +255,20 @@ bool drops::destroy_drop(const uint64_t drop_id, const name owner)
 [[eosio::action]] bool drops::open(const name owner)
 {
    require_auth(owner);
+   return open_balance(owner, owner);
+}
+
+bool drops::open_balance(const name owner, const name ram_payer)
+{
+   require_auth(ram_payer);
 
    drops::balances_table _balances(get_self(), get_self().value);
 
    auto balance = _balances.find(owner.value);
    if (balance == _balances.end()) {
-      _balances.emplace(owner, [&](auto& row) {
+      // when performing `drops::transfer`, allow the `from` (sender) to open balance of receiver
+      // RAM is released on subsequent owner operation (generate/claim/destroy/transfer)
+      _balances.emplace(ram_payer, [&](auto& row) {
          row.owner     = owner;
          row.drops     = 0;
          row.ram_bytes = 0;
@@ -299,7 +309,8 @@ void drops::update_ram_bytes(const name owner, const int64_t bytes)
 
    // add/reduce RAM bytes to account
    auto& balance = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
-   _balances.modify(balance, same_payer, [&](auto& row) {
+
+   _balances.modify(balance, auth_ram_payer(owner), [&](auto& row) {
       row.ram_bytes += bytes;
       check(row.ram_bytes >= 0, "Account does not have enough RAM bytes.");
    });
@@ -320,6 +331,12 @@ void drops::transfer_drops(const name from, const name to, const int64_t amount)
    return update_drops(from, to, amount);
 }
 
+// if authorized, owner shall always be the RAM payer of operations
+name drops::auth_ram_payer(const name owner)
+{
+   return has_auth(owner) ? owner : same_payer;
+}
+
 void drops::update_drops(const name from, const name to, const int64_t amount)
 {
    drops::balances_table _balances(get_self(), get_self().value);
@@ -328,7 +345,7 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
    // sender (if empty, minting new drops)
    if (from.value) {
       auto& balance_from = _balances.get(from.value, ERROR_OPEN_BALANCE.c_str());
-      _balances.modify(balance_from, same_payer, [&](auto& row) { row.drops -= amount; });
+      _balances.modify(balance_from, auth_ram_payer(from), [&](auto& row) { row.drops -= amount; });
    }
 
    // receiver (if empty, burning drops)
