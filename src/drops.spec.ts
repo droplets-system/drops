@@ -109,11 +109,16 @@ describe(core_contract, () => {
 
     test('on_transfer', async () => {
         const before = getBalance(alice)
+        const tokenBefore = getTokenBalance(alice);
         await contracts.token.actions
             .transfer([alice, core_contract, '10.0000 EOS', `buyram,${alice}`])
             .send(alice)
         const after = getBalance(alice)
+        const tokenAfter = getTokenBalance(alice);
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(87990)
+
+        // should not receive any EOS refunds on transfer
+        expect(tokenAfter.value - tokenBefore.value).toBe(-10)
     })
 
     test('on_transfer::error - contract disabled', async () => {
@@ -138,18 +143,41 @@ describe(core_contract, () => {
         await expectToThrow(action, 'eosio_assert: Receiver must be the same as the sender.')
     })
 
-    test('generate', async () => {
+    test('generate - bound=false', async () => {
         await contracts.token.actions
             .transfer([bob, core_contract, '100.0000 EOS', `buyram,${bob}`])
             .send(bob)
 
         const data = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
-        await contracts.core.actions.generate([bob, 1, data]).send(bob)
+        const before = getBalance(bob)
+        await contracts.core.actions.generate([bob, false, 1, data]).send(bob)
+        const after = getBalance(bob)
 
+        // should consume RAM bytes
+        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-512)
         expect(getDrops(bob).length).toBe(1)
         expect(
             getDrop(10272988527514872302n).equals({
                 seed: '10272988527514872302',
+                owner: 'bob',
+                created: '2024-01-29T00:00:00.000',
+                bound: false,
+            })
+        ).toBeTrue()
+    })
+
+    test('generate - bound=true', async () => {
+        const data = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+        const before = getBalance(bob)
+        await contracts.core.actions.generate([bob, true, 1, data]).send(bob)
+        const after = getBalance(bob)
+
+        // should not consume any RAM bytes
+        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(0)
+        expect(getDrops(bob).length).toBe(2)
+        expect(
+            getDrop(312217830762532995n).equals({
+                seed: '312217830762532995',
                 owner: 'bob',
                 created: '2024-01-29T00:00:00.000',
                 bound: true,
@@ -159,7 +187,7 @@ describe(core_contract, () => {
 
     test('generate::error - already exists', async () => {
         const action = contracts.core.actions
-            .generate([bob, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+            .generate([bob, false, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
             .send(bob)
 
         await expectToThrow(
@@ -169,12 +197,11 @@ describe(core_contract, () => {
     })
 
     test('generate 1K', async () => {
-        const before = getBalance(bob)
-        await contracts.core.actions.generate([bob, 1000, 'cccccccccccccccccccccccccccccccc']).send(bob)
-        const after = getBalance(bob)
-
-        expect(getDrops(bob).length).toBe(1001)
-        expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-512000)
+        const before = getDrops(bob).length
+        const data = 'cccccccccccccccccccccccccccccccc'
+        await contracts.core.actions.generate([bob, true, 1000, data]).send(bob)
+        const after = getDrops(bob).length
+        expect(after - before).toBe(1000)
     })
 
     test('on_transfer::error - invalid contract', async () => {
@@ -188,12 +215,15 @@ describe(core_contract, () => {
     })
 
     test('destroy', async () => {
-        await contracts.core.actions.generate([alice, 10, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']).send(alice)
+        const data = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        await contracts.core.actions.generate([alice, false, 10, data]).send(alice)
         const before = getBalance(alice)
         await contracts.core.actions
             .destroy([alice, ['6530728038117924388', '8833355934996727321'], 'memo'])
             .send(alice)
         const after = getBalance(alice)
+
+        // destroy unbound drops should reclaim RAM to owner
         expect(after.ram_bytes.value - before.ram_bytes.value).toBe(1024)
         expect(getDrops(alice).length).toBe(8)
         expect(() => getDrop(6530728038117924388n)).toThrow('Drop not found')
@@ -223,15 +253,16 @@ describe(core_contract, () => {
 
     test('unbind', async () => {
         const before = getBalance(bob)
-        expect(getDrop(10272988527514872302n).bound).toBeTruthy()
-        await contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
+        const drop_id = 18430780622749815321n
+        expect(getDrop(drop_id).bound).toBeTruthy()
+        await contracts.core.actions.unbind([bob, [String(drop_id)]]).send(bob)
 
         // drop must now be unbound
-        expect(getDrop(10272988527514872302n).bound).toBeFalsy()
+        expect(getDrop(drop_id).bound).toBeFalsy()
         const after = getBalance(bob)
 
-        // EOS returned for excess RAM
-        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(-583)
+        // deduct RAM bytes to unbind drops
+        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(-512)
     })
 
     test('unbind::error - not found', async () => {
@@ -254,15 +285,16 @@ describe(core_contract, () => {
 
     test('bind', async () => {
         const before = getBalance(bob)
-        expect(getDrop(10272988527514872302n).bound).toBeFalsy()
-        await contracts.core.actions.bind([bob, ['10272988527514872302']]).send(bob)
+        const drop_id = 18430780622749815321n
+        expect(getDrop(drop_id).bound).toBeFalsy()
+        await contracts.core.actions.bind([bob, [String(drop_id)]]).send(bob)
 
         // drop must now be unbound
-        expect(getDrop(10272988527514872302n).bound).toBeTruthy()
+        expect(getDrop(drop_id).bound).toBeTruthy()
         const after = getBalance(bob)
 
-        // EOS returned for excess RAM
-        expect(after.units.value - before.units.value).toBe(578)
+        // returned for excess RAM bytes
+        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(512)
     })
 
     test('bind::error - not found', async () => {
@@ -279,10 +311,8 @@ describe(core_contract, () => {
     })
 
     test('bind::error - is not unbound', async () => {
-        const action = contracts.core.actions.bind([bob, ['10272988527514872302']]).send(bob)
-        await expectToThrow(
-            action,
-            'eosio_assert_message: Drop 10272988527514872302 is not unbound'
-        )
+        const drop_id = '18430780622749815321'
+        const action = contracts.core.actions.bind([bob, [drop_id]]).send(bob)
+        await expectToThrow(action, `eosio_assert_message: Drop ${drop_id} is not unbound`)
     })
 })

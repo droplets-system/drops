@@ -15,9 +15,9 @@ clean:
 test: build node_modules build/drops.ts init/codegen
 	bun test
 
-init/codegen: codegen/dir codegen/eosio.ts codegen/eosio.token.ts 
+init/codegen: codegen/dir codegen/eosio.ts codegen/eosio.token.ts
 
-build/drops.ts: 
+build/drops.ts:
 	npx @wharfkit/cli generate --json ./build/drops.abi --file ./build/drops.ts drops
 
 codegen/dir:
@@ -33,7 +33,7 @@ codegen/eosio.token.ts:
 check: cppcheck jscheck
 
 .PHONY: cppcheck
-cppcheck: 
+cppcheck:
 	clang-format --dry-run --Werror src/*.cpp include/drops/*.hpp
 
 .PHONY: jscheck

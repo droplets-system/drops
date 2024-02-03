@@ -50,22 +50,15 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 }
 
 // @user
-[[eosio::action]] int64_t drops::generate(const name owner, const uint32_t amount, const string data)
+[[eosio::action]] int64_t drops::generate(const name owner, const bool bound, const uint32_t amount, const string data)
 {
    require_auth(owner);
    check_is_enabled(get_self());
-
-   // TO-DO handle bound/unbound drops
-   // ADD ram payer to `generate` action
-
-   // generating drops consumes RAM to owner
-   const int64_t bytes = amount * get_bytes_per_drop();
-   reduce_ram_bytes(owner, bytes);
-   emplace_drops(owner, owner, data, amount);
+   const int64_t bytes = emplace_drops(owner, bound, amount, data);
    return bytes;
 }
 
-void drops::emplace_drops(const name ram_payer, const name owner, const string data, const uint64_t amount)
+int64_t drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data)
 {
    drop_table drops(get_self(), get_self().value);
 
@@ -85,13 +78,24 @@ void drops::emplace_drops(const name ram_payer, const name owner, const string d
          check(drops.find(seed) == drops.end(), "Drop " + to_string(seed) + " already exists.");
       }
 
+      // Determine the payer with bound = owner, unbound = contract
+      const name ram_payer = bound ? owner : get_self();
       drops.emplace(ram_payer, [&](auto& row) {
          row.seed    = seed;
          row.owner   = owner;
-         row.bound   = ram_payer == owner;
+         row.bound   = bound;
          row.created = current_block_time();
       });
    }
+
+   // generating unbond drops consumes contract RAM bytes to owner
+   if ( bound == false ) {
+      const int64_t bytes = amount * get_bytes_per_drop();
+      reduce_ram_bytes(owner, bytes);
+      return bytes;
+   }
+   // bound drops do not consume contract RAM bytes
+   return 0;
 }
 
 uint64_t drops::hash_data(const string data)
@@ -138,14 +142,14 @@ void drops::modify_owner(const uint64_t drop_id, const name current_owner, const
    });
 }
 
-void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const name ram_payer)
+void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound)
 {
    drops::drop_table drops(get_self(), get_self().value);
 
    auto& drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
 
    // Determine the payer with bound = owner, unbound = contract
-   const bool bound = ram_payer == drop.owner;
+   const name ram_payer = bound ? owner : get_self();
    check_drop_owner(drop, owner);
    check_drop_bound(drop, !bound);
 
@@ -170,7 +174,7 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const nam
 
    // Modify the RAM payer for the selected drops
    for (const uint64_t drop_id : drops_ids) {
-      modify_ram_payer(drop_id, owner, get_self());
+      modify_ram_payer(drop_id, owner, true);
    }
    return bytes;
 }
@@ -188,7 +192,7 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const nam
 
    // Modify RAM payer for the selected drops
    for (const uint64_t drop_id : drops_ids) {
-      modify_ram_payer(drop_id, owner, owner);
+      modify_ram_payer(drop_id, owner, false);
    }
    return bytes;
 }
@@ -213,20 +217,21 @@ drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string 
    check(drops_ids.size() > 0, "No drops were provided to destroy.");
 
    // The number of bound drops that were destroyed
-   uint64_t bound_destroyed = 0;
+   uint64_t unbound_destroyed = 0;
    for (const uint64_t drop_id : drops_ids) {
-      // Count the number of "bound=true" drops destroyed
-      if (destroy_drop(drop_id, owner)) {
-         bound_destroyed++;
+      // Count the number of "bound=false" drops destroyed
+      const bool bound = destroy_drop(drop_id, owner);
+      if (bound == false) {
+         unbound_destroyed++;
       }
    }
 
    // Calculate how much of their own RAM the account reclaimed
-   const int64_t bytes_reclaimed = bound_destroyed * get_bytes_per_drop();
+   const int64_t bytes_reclaimed = unbound_destroyed * get_bytes_per_drop();
    if (bytes_reclaimed > 0) {
       add_ram_bytes(owner, bytes_reclaimed);
    }
-   return {bound_destroyed, bytes_reclaimed};
+   return {unbound_destroyed, bytes_reclaimed};
 }
 
 bool drops::destroy_drop(const uint64_t drop_id, const name owner)

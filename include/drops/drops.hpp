@@ -148,7 +148,7 @@ public:
    // @return
    struct destroy_return_value
    {
-      uint64_t bound_destroyed;
+      uint64_t unbound_destroyed;
       int64_t  bytes_reclaimed;
    };
 
@@ -157,7 +157,7 @@ public:
    on_transfer(const name from, const name to, const asset quantity, const string memo);
 
    // @user
-   [[eosio::action]] int64_t generate(const name owner, const uint32_t amount, const string data);
+   [[eosio::action]] int64_t generate(const name owner, const bool bound, const uint32_t amount, const string data);
 
    // @user
    [[eosio::action]] void transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo);
@@ -228,8 +228,8 @@ private:
    void check_drop_owner(const drop_row drop, const name owner);
    void check_drop_bound(const drop_row drop, const bool bound);
    void modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
-   void modify_ram_payer(const uint64_t drop_id, const name owner, const name ram_payer);
-   void emplace_drops(const name ram_payer, const name owner, const string data, const uint64_t amount);
+   void modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound);
+   int64_t emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
    bool destroy_drop(const uint64_t drop_id, const name owner);
 
 // DEBUG (used to help testing)
