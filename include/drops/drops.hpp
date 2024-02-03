@@ -259,14 +259,16 @@ private:
    void sell_ram_bytes(int64_t bytes);
    void buy_ram(const asset quantity);
 
-   // update balances
+   // ram balances helpers
+   void update_ram_bytes(const name owner, const int64_t bytes);
    void add_ram_bytes(const name owner, const int64_t bytes);
    void reduce_ram_bytes(const name owner, const int64_t bytes);
-   void update_ram_bytes(const name owner, const int64_t bytes);
+
+   // drop balances helpers
+   void update_drops(const name from, const name to, const int64_t amount);
    void add_drops(const name owner, const int64_t amount);
    void reduce_drops(const name owner, const int64_t amount);
    void transfer_drops(const name from, const name to, const int64_t amount);
-   void update_drops(const name from, const name to, const int64_t amount);
 
    // modify RAM operations
    void check_drop_owner(const drop_row drop, const name owner);
