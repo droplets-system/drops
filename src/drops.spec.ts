@@ -10,7 +10,8 @@ import * as TokenContract from '../codegen/eosio.token.ts'
 const blockchain = new Blockchain()
 const bob = 'bob'
 const alice = 'alice'
-blockchain.createAccounts(bob, alice)
+const charles = 'charles'
+blockchain.createAccounts(bob, alice, charles)
 
 const core_contract = 'drops'
 const contracts = {
@@ -22,7 +23,16 @@ const contracts = {
 
 function getState(): DropsContract.Types.state_row {
     const scope = Name.from(core_contract).value.value
-    return contracts.core.tables.state(scope).getTableRows()[0]
+    const row = contracts.core.tables.state(scope).getTableRows()[0]
+    if (!row) throw new Error('State not found')
+    return DropsContract.Types.state_row.from(row)
+}
+
+function getStat(): DropsContract.Types.stat_row {
+    const scope = Name.from(core_contract).value.value
+    const row = contracts.core.tables.stat(scope).getTableRows()[0]
+    if (!row) throw new Error('Stat not found')
+    return DropsContract.Types.stat_row.from(row)
 }
 
 function getTokenBalance(account: string) {
@@ -320,5 +330,43 @@ describe(core_contract, () => {
         const drop_id = '18430780622749815321'
         const action = contracts.core.actions.bind([bob, [drop_id]]).send(bob)
         await expectToThrow(action, `eosio_assert_message: Drop ${drop_id} is not unbound`)
+    })
+
+    test('transfer', async () => {
+        const before = {
+            alice: getBalance(alice),
+            bob: getBalance(bob),
+            stat: getStat(),
+        }
+        const drop_id = 17855725969634623351n
+        expect(getDrop(drop_id).bound).toBeFalsy()
+        await contracts.core.actions.transfer([alice, bob, [String(drop_id)], '']).send(alice)
+
+        // drop should remain unbound
+        expect(getDrop(drop_id).bound).toBeFalsy()
+        const after = {
+            alice: getBalance(alice),
+            bob: getBalance(bob),
+            stat: getStat(),
+        }
+
+        // no RAM bytes should be consumed for either accounts
+        expect(after.alice.ram_bytes.value - before.alice.ram_bytes.value).toBe(0)
+        expect(after.bob.ram_bytes.value - before.bob.ram_bytes.value).toBe(0)
+        expect(after.stat.ram_bytes.value - before.stat.ram_bytes.value).toBe(0)
+
+        // drop should be transferred to bob
+        expect(after.alice.drops.toNumber() - before.alice.drops.toNumber()).toBe(-1)
+        expect(after.bob.drops.toNumber() - before.bob.drops.toNumber()).toBe(1)
+        expect(after.stat.drops.value - before.stat.drops.value).toBe(0)
+    })
+
+    // TO-DO: could implement `open` logic to allow transfer to unopened accounts
+    // RAM payer would be the sender
+    // https://github.com/drops-system/drops/issues/15
+    test('transfer::error - transfer to unopened', async () => {
+        const drop_id = '17855725969634623351'
+        const action = contracts.core.actions.transfer([bob, charles, [drop_id], '']).send(bob)
+        await expectToThrow(action, `eosio_assert: Account does not have an open balance.`)
     })
 })
