@@ -115,9 +115,9 @@ drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids
    require_auth(from);
    check_is_enabled(get_self());
 
-   check(is_account(to), "Account does not exist.");
+   check(is_account(to), ERROR_ACCOUNT_NOT_EXISTS);
    const int64_t amount = drops_ids.size();
-   check(amount > 0, "No drops were provided to transfer.");
+   check(amount > 0, ERROR_NO_DROPS);
    transfer_drops(from, to, amount);
 
    require_recipient(from);
@@ -169,7 +169,7 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const boo
 {
    require_auth(owner);
    check_is_enabled(get_self());
-   check(drops_ids.size() > 0, "No drops were provided to transfer.");
+   check(drops_ids.size() > 0, ERROR_NO_DROPS);
 
    // binding drops releases RAM to the owner
    const int64_t bytes = drops_ids.size() * get_bytes_per_drop();
@@ -187,7 +187,7 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const boo
 {
    require_auth(owner);
    check_is_enabled(get_self());
-   check(drops_ids.size() > 0, "Drops is empty.");
+   check(drops_ids.size() > 0, ERROR_NO_DROPS);
 
    // unbinding drops requires the owner to pay for the RAM
    const int64_t bytes = drops_ids.size() * get_bytes_per_drop();
@@ -218,7 +218,7 @@ drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string 
 
    check_is_enabled(get_self());
    const int64_t amount = drops_ids.size();
-   check(amount > 0, "No drops were provided to destroy.");
+   check(amount > 0, ERROR_NO_DROPS);
    reduce_drops(owner, amount);
 
    // The number of bound drops that were destroyed

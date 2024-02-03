@@ -67,8 +67,13 @@ function getDrops(owner?: string): DropsContract.Types.drop_row[] {
     return rows.filter((row) => row.owner === owner)
 }
 
+// standard error messages
 const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<amount>,<data>")`
+const ERROR_DROP_NOT_FOUND = 'eosio_assert: Drop not found.'
 const ERROR_SYSTEM_DISABLED = 'eosio_assert_message: Drops system is disabled.'
+const ERROR_OPEN_BALANCE = 'eosio_assert: Account does not have an open balance.'
+const ERROR_ACCOUNT_NOT_EXISTS = 'eosio_assert_message: Account does not exist.'
+const ERROR_NO_DROPS = 'eosio_assert_message: No drops were provided.'
 
 describe(core_contract, () => {
     // Setup before each test
@@ -216,6 +221,7 @@ describe(core_contract, () => {
         await contracts.core.actions.generate([bob, true, 1000, data]).send(bob)
         const after = getBalance(bob)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1000)
+        expect(getDrops(bob).length).toBe(1002)
     })
 
     test('on_transfer::error - invalid contract', async () => {
@@ -245,7 +251,7 @@ describe(core_contract, () => {
 
     test('destroy::error - not found', async () => {
         const action = contracts.core.actions.destroy([alice, ['123'], 'memo']).send(alice)
-        await expectToThrow(action, 'eosio_assert: Drop not found.')
+        await expectToThrow(action, ERROR_DROP_NOT_FOUND)
     })
 
     test('destroy::error - must belong to owner', async () => {
@@ -265,6 +271,11 @@ describe(core_contract, () => {
         await expectToThrow(action, 'missing required authority bob')
     })
 
+    test('destroy::error - no drops', async () => {
+        const action = contracts.core.actions.destroy([bob, [], '']).send(bob)
+        await expectToThrow(action, ERROR_NO_DROPS)
+    })
+
     test('unbind', async () => {
         const before = getBalance(bob)
         const drop_id = 18430780622749815321n
@@ -282,7 +293,7 @@ describe(core_contract, () => {
 
     test('unbind::error - not found', async () => {
         const action = contracts.core.actions.unbind([bob, ['123']]).send(bob)
-        await expectToThrow(action, 'eosio_assert: Drop not found.')
+        await expectToThrow(action, ERROR_DROP_NOT_FOUND)
     })
 
     test('unbind::error - does not belong to account', async () => {
@@ -296,6 +307,11 @@ describe(core_contract, () => {
     test('unbind::error - is not bound', async () => {
         const action = contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
         await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound')
+    })
+
+    test('unbind::error - no drops', async () => {
+        const action = contracts.core.actions.unbind([bob, []]).send(bob)
+        await expectToThrow(action, ERROR_NO_DROPS)
     })
 
     test('bind', async () => {
@@ -315,7 +331,7 @@ describe(core_contract, () => {
 
     test('bind::error - not found', async () => {
         const action = contracts.core.actions.bind([bob, ['123']]).send(bob)
-        await expectToThrow(action, 'eosio_assert: Drop not found.')
+        await expectToThrow(action, ERROR_DROP_NOT_FOUND)
     })
 
     test('bind::error - does not belong to account', async () => {
@@ -330,6 +346,11 @@ describe(core_contract, () => {
         const drop_id = '18430780622749815321'
         const action = contracts.core.actions.bind([bob, [drop_id]]).send(bob)
         await expectToThrow(action, `eosio_assert_message: Drop ${drop_id} is not unbound`)
+    })
+
+    test('bind::error - no drops', async () => {
+        const action = contracts.core.actions.bind([bob, []]).send(bob)
+        await expectToThrow(action, ERROR_NO_DROPS)
     })
 
     test('transfer', async () => {
@@ -367,6 +388,19 @@ describe(core_contract, () => {
     test('transfer::error - transfer to unopened', async () => {
         const drop_id = '17855725969634623351'
         const action = contracts.core.actions.transfer([bob, charles, [drop_id], '']).send(bob)
-        await expectToThrow(action, `eosio_assert: Account does not have an open balance.`)
+        await expectToThrow(action, ERROR_OPEN_BALANCE)
+    })
+
+    test('transfer::error - account does not exists', async () => {
+        const drop_id = 17855725969634623351n
+        const action = contracts.core.actions
+            .transfer([bob, 'foobar', [String(drop_id)], ''])
+            .send(bob)
+        await expectToThrow(action, ERROR_ACCOUNT_NOT_EXISTS)
+    })
+
+    test('transfer::error - no drops', async () => {
+        const action = contracts.core.actions.transfer([bob, alice, [], '']).send(bob)
+        await expectToThrow(action, ERROR_NO_DROPS)
     })
 })
