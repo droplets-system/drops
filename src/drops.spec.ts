@@ -244,7 +244,7 @@ describe(core_contract, () => {
         const after = getBalance(alice)
 
         // destroy unbound drops should reclaim RAM to owner
-        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(1024)
+        expect(after.ram_bytes.value - before.ram_bytes.value).toBe(277 * 2)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(-2)
         expect(() => getDrop(6530728038117924388n)).toThrow('Drop not found')
     })
