@@ -91,7 +91,7 @@ public:
     * ### params
     *
     * - `{name} owner` - (primary key) owner account
-    * - `{uint64_t} drops` - total amount of drops owned
+    * - `{int64_t} drops` - total amount of drops owned
     * - `{int64_t} ram_bytes` - total amount of RAM bytes available by the owner
     *
     * ### example
@@ -106,9 +106,9 @@ public:
     */
    struct [[eosio::table("balances")]] balances_row
    {
-      name     owner;
-      uint64_t drops;
-      int64_t  ram_bytes;
+      name    owner;
+      int64_t drops;
+      int64_t ram_bytes;
 
       uint64_t primary_key() const { return owner.value; }
    };
@@ -118,7 +118,7 @@ public:
     *
     * ### params
     *
-    * - `{uint64_t} drops` - total supply of drops
+    * - `{int64_t} drops` - total supply of drops
     * - `{int64_t} ram_bytes` - total available RAM bytes held by the contract
     *
     * ### example
@@ -132,8 +132,8 @@ public:
     */
    struct [[eosio::table("stat")]] stat_row
    {
-      uint64_t drops;
-      int64_t  ram_bytes;
+      int64_t drops;
+      int64_t ram_bytes;
    };
 
    typedef eosio::multi_index<
@@ -148,8 +148,8 @@ public:
    // @return
    struct destroy_return_value
    {
-      uint64_t unbound_destroyed;
-      int64_t  bytes_reclaimed;
+      int64_t unbound_destroyed;
+      int64_t bytes_reclaimed;
    };
 
    // @user
@@ -252,19 +252,29 @@ private:
    int64_t  get_bytes_per_drop();
    uint64_t hash_data(const string data);
 
+   // helpers
    void transfer_tokens(const name to, const asset quantity, const string memo);
    void transfer_ram(const name to, const int64_t bytes, const string memo);
    void buy_ram_bytes(int64_t bytes);
    void sell_ram_bytes(int64_t bytes);
    void buy_ram(const asset quantity);
 
-   void reduce_ram_bytes(const name owner, const int64_t bytes);
+   // update balances
    void add_ram_bytes(const name owner, const int64_t bytes);
+   void reduce_ram_bytes(const name owner, const int64_t bytes);
+   void update_ram_bytes(const name owner, const int64_t bytes);
+   void add_drops(const name owner, const int64_t amount);
+   void reduce_drops(const name owner, const int64_t amount);
+   void transfer_drops(const name from, const name to, const int64_t amount);
+   void update_drops(const name from, const name to, const int64_t amount);
 
-   void    check_drop_owner(const drop_row drop, const name owner);
-   void    check_drop_bound(const drop_row drop, const bool bound);
-   void    modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
-   void    modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound);
+   // modify RAM operations
+   void check_drop_owner(const drop_row drop, const name owner);
+   void check_drop_bound(const drop_row drop, const bool bound);
+   void modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
+   void modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound);
+
+   // create and destroy
    int64_t emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
    bool    destroy_drop(const uint64_t drop_id, const name owner);
 

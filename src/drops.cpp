@@ -55,6 +55,7 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    require_auth(owner);
    check_is_enabled(get_self());
    const int64_t bytes = emplace_drops(owner, bound, amount, data);
+   add_drops(owner, amount);
    return bytes;
 }
 
@@ -115,7 +116,9 @@ drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids
    check_is_enabled(get_self());
 
    check(is_account(to), "Account does not exist.");
-   check(drops_ids.size() > 0, "No drops were provided to transfer.");
+   const int64_t amount = drops_ids.size();
+   check(amount > 0, "No drops were provided to transfer.");
+   transfer_drops(from, to, amount);
 
    require_recipient(from);
    require_recipient(to);
@@ -214,10 +217,12 @@ drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string 
    require_auth(owner);
 
    check_is_enabled(get_self());
-   check(drops_ids.size() > 0, "No drops were provided to destroy.");
+   const int64_t amount = drops_ids.size();
+   check(amount > 0, "No drops were provided to destroy.");
+   reduce_drops(owner, amount);
 
    // The number of bound drops that were destroyed
-   uint64_t unbound_destroyed = 0;
+   int64_t unbound_destroyed = 0;
    for (const uint64_t drop_id : drops_ids) {
       // Count the number of "bound=false" drops destroyed
       const bool bound = destroy_drop(drop_id, owner);
@@ -288,22 +293,71 @@ bool drops::destroy_drop(const uint64_t drop_id, const name owner)
    return 0;
 }
 
-void drops::reduce_ram_bytes(const name owner, const int64_t bytes)
+void drops::add_ram_bytes(const name owner, const int64_t bytes) { return update_ram_bytes(owner, bytes); }
+
+void drops::reduce_ram_bytes(const name owner, const int64_t bytes) { return update_ram_bytes(owner, -bytes); }
+
+void drops::update_ram_bytes(const name owner, const int64_t bytes)
 {
    drops::balances_table _balances(get_self(), get_self().value);
+   drops::stat_table     _stat(get_self(), get_self().value);
 
+   // add/reduce RAM bytes to account
    auto& balance = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
    _balances.modify(balance, same_payer, [&](auto& row) {
-      row.ram_bytes -= bytes;
+      row.ram_bytes += bytes;
       check(row.ram_bytes >= 0, "Account does not have enough RAM bytes.");
    });
+
+   // add/reduce RAM bytes to contract (used for global limits)
+   auto stat = _stat.get_or_default();
+   stat.ram_bytes += bytes;
+   check(stat.ram_bytes >= 0, "Contract does not have enough RAM bytes."); // should never happen
+   _stat.set(stat, get_self());
 }
-void drops::add_ram_bytes(const name owner, const int64_t bytes)
+
+void drops::add_drops(const name owner, const int64_t amount) { return update_drops(name(), owner, amount); }
+
+void drops::reduce_drops(const name owner, const int64_t amount) { return update_drops(owner, name(), amount); }
+
+void drops::transfer_drops(const name from, const name to, const int64_t amount)
+{
+   return update_drops(from, to, amount);
+}
+
+void drops::update_drops(const name from, const name to, const int64_t amount)
 {
    drops::balances_table _balances(get_self(), get_self().value);
+   drops::stat_table     _stat(get_self(), get_self().value);
 
-   auto& balance = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
-   _balances.modify(balance, same_payer, [&](auto& row) { row.ram_bytes += bytes; });
+   // sender (if empty, minting new drops)
+   if (from.value) {
+      auto& balance_from = _balances.get(from.value, ERROR_OPEN_BALANCE.c_str());
+      _balances.modify(balance_from, same_payer, [&](auto& row) { row.drops -= amount; });
+   }
+
+   // receiver (if empty, burning drops)
+   if (to.value) {
+      auto& balance_to = _balances.get(to.value, ERROR_OPEN_BALANCE.c_str());
+      _balances.modify(balance_to, same_payer, [&](auto& row) { row.drops += amount; });
+   }
+
+   // add drops to contract (used for global limits)
+   // NOTE: a way to keep track of the total amount of drops in the system
+   if (from.value == 0 || to.value == 0) {
+      auto stat = _stat.get_or_default();
+
+      // mint
+      if (from.value == 0) {
+         stat.drops += amount;
+
+         // burn
+      } else if (to.value == 0) {
+         stat.drops -= amount;
+         check(stat.drops >= 0, "Contract does not have enough drops."); // should never happen
+      }
+      _stat.set(stat, get_self());
+   }
 }
 
 // @admin

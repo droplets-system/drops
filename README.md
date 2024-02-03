@@ -45,7 +45,7 @@
 ### params
 
 - `{name} owner` - (primary key) owner account
-- `{uint64_t} drops` - total amount of drops owned
+- `{int64_t} drops` - total amount of drops owned
 - `{int64_t} ram_bytes` - total amount of RAM bytes available by the owner
 
 ### example
@@ -62,7 +62,7 @@
 
 ### params
 
-- `{uint64_t} drops` - total supply of drops
+- `{int64_t} drops` - total supply of drops
 - `{int64_t} ram_bytes` - total available RAM bytes held by the contract
 
 ### example
