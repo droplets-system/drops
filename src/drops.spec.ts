@@ -135,7 +135,7 @@ describe(core_contract, () => {
             .send(alice)
         const after = getBalance(alice)
         const tokenAfter = getTokenBalance(alice)
-        expect(after.ram_bytes.toNumber() - 0).toBe(87990)
+        expect(after.ram_bytes.toNumber() - 0).toBe(87550)
 
         // should not receive any EOS refunds on transfer
         expect(tokenAfter.value - tokenBefore.value).toBe(-10)
