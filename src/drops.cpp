@@ -332,10 +332,7 @@ void drops::transfer_drops(const name from, const name to, const int64_t amount)
 }
 
 // if authorized, owner shall always be the RAM payer of operations
-name drops::auth_ram_payer(const name owner)
-{
-   return has_auth(owner) ? owner : same_payer;
-}
+name drops::auth_ram_payer(const name owner) { return has_auth(owner) ? owner : same_payer; }
 
 void drops::update_drops(const name from, const name to, const int64_t amount)
 {

@@ -93,6 +93,7 @@ describe(core_contract, () => {
         await contracts.token.actions.issue(['eosio.token', supply, '']).send()
         await contracts.token.actions.transfer(['eosio.token', bob, '1000.0000 EOS', '']).send()
         await contracts.token.actions.transfer(['eosio.token', alice, '1000.0000 EOS', '']).send()
+        await contracts.token.actions.transfer(['eosio.token', charles, '1000.0000 EOS', '']).send()
     })
 
     test('fake.token::issue', async () => {
@@ -167,6 +168,13 @@ describe(core_contract, () => {
             .transfer([alice, core_contract, '10.0000 EOS', 'foobar'])
             .send(alice)
         await expectToThrow(action, ERROR_ACCOUNT_NOT_EXISTS)
+    })
+
+    test('on_transfer::error - account must have open balance', async () => {
+        const action = contracts.token.actions
+            .transfer([charles, core_contract, '10.0000 EOS', charles])
+            .send(charles)
+        await expectToThrow(action, ERROR_OPEN_BALANCE)
     })
 
     test('generate - bound=false', async () => {
