@@ -159,7 +159,7 @@ describe(core_contract, () => {
 
         // should consume RAM bytes
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-512)
-        expect(getDrops(bob).length).toBe(1)
+        expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1)
         expect(
             getDrop(10272988527514872302n).equals({
                 seed: '10272988527514872302',
@@ -178,7 +178,7 @@ describe(core_contract, () => {
 
         // should not consume any RAM bytes
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(0)
-        expect(getDrops(bob).length).toBe(2)
+        expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1)
         expect(
             getDrop(312217830762532995n).equals({
                 seed: '312217830762532995',
@@ -201,11 +201,11 @@ describe(core_contract, () => {
     })
 
     test('generate 1K', async () => {
-        const before = getDrops(bob).length
+        const before = getBalance(bob)
         const data = 'cccccccccccccccccccccccccccccccc'
         await contracts.core.actions.generate([bob, true, 1000, data]).send(bob)
-        const after = getDrops(bob).length
-        expect(after - before).toBe(1000)
+        const after = getBalance(bob)
+        expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1000)
     })
 
     test('on_transfer::error - invalid contract', async () => {
@@ -229,7 +229,7 @@ describe(core_contract, () => {
 
         // destroy unbound drops should reclaim RAM to owner
         expect(after.ram_bytes.value - before.ram_bytes.value).toBe(1024)
-        expect(getDrops(alice).length).toBe(8)
+        expect(after.drops.toNumber() - before.drops.toNumber()).toBe(-2)
         expect(() => getDrop(6530728038117924388n)).toThrow('Drop not found')
     })
 
@@ -267,6 +267,7 @@ describe(core_contract, () => {
 
         // deduct RAM bytes to unbind drops
         expect(after.ram_bytes.value - before.ram_bytes.value).toBe(-512)
+        expect(after.drops.toNumber() - before.drops.toNumber()).toBe(0)
     })
 
     test('unbind::error - not found', async () => {
@@ -299,6 +300,7 @@ describe(core_contract, () => {
 
         // returned for excess RAM bytes
         expect(after.ram_bytes.value - before.ram_bytes.value).toBe(512)
+        expect(after.drops.toNumber() - before.drops.toNumber()).toBe(0)
     })
 
     test('bind::error - not found', async () => {
