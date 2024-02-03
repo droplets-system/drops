@@ -89,7 +89,7 @@ int64_t drops::emplace_drops(const name owner, const bool bound, const uint32_t 
    }
 
    // generating unbond drops consumes contract RAM bytes to owner
-   if ( bound == false ) {
+   if (bound == false) {
       const int64_t bytes = amount * get_bytes_per_drop();
       reduce_ram_bytes(owner, bytes);
       return bytes;

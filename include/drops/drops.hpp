@@ -225,12 +225,12 @@ private:
    void reduce_ram_bytes(const name owner, const int64_t bytes);
    void add_ram_bytes(const name owner, const int64_t bytes);
 
-   void check_drop_owner(const drop_row drop, const name owner);
-   void check_drop_bound(const drop_row drop, const bool bound);
-   void modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
-   void modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound);
+   void    check_drop_owner(const drop_row drop, const name owner);
+   void    check_drop_bound(const drop_row drop, const bool bound);
+   void    modify_owner(const uint64_t drop_id, const name current_owner, const name new_owner);
+   void    modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound);
    int64_t emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
-   bool destroy_drop(const uint64_t drop_id, const name owner);
+   bool    destroy_drop(const uint64_t drop_id, const name owner);
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
