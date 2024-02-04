@@ -306,6 +306,7 @@ bool drops::open_balance(const name owner, const name ram_payer)
       if (FLAG_RAM_TRANSFER_ON_CLAIM) {
          transfer_ram(owner, ram_bytes, MEMO_RAM_TRANSFER);
       } else {
+         sell_ram_bytes(ram_bytes);
          const asset quantity = eosiosystem::ram_proceeds_minus_fee(ram_bytes, EOS);
          transfer_tokens(owner, quantity, MEMO_RAM_SOLD_TRANSFER);
       }
