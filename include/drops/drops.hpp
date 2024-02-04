@@ -244,16 +244,16 @@ public:
    static void check_is_enabled(const name code) { check(is_enabled(code), ERROR_SYSTEM_DISABLED); }
 
    // action wrappers
-   using generate_action = eosio::action_wrapper<"generate"_n, &drops::generate>;
-   using transfer_action = eosio::action_wrapper<"transfer"_n, &drops::transfer>;
-   using destroy_action  = eosio::action_wrapper<"destroy"_n, &drops::destroy>;
-   using bind_action     = eosio::action_wrapper<"bind"_n, &drops::bind>;
-   using unbind_action   = eosio::action_wrapper<"unbind"_n, &drops::unbind>;
-   using enable_action   = eosio::action_wrapper<"enable"_n, &drops::enable>;
-   using open_action     = eosio::action_wrapper<"open"_n, &drops::open>;
-   using claim_action    = eosio::action_wrapper<"claim"_n, &drops::claim>;
-   using logbalances_action    = eosio::action_wrapper<"logbalances"_n, &drops::logbalances>;
-   using logstat_action    = eosio::action_wrapper<"logstat"_n, &drops::logstat>;
+   using generate_action    = eosio::action_wrapper<"generate"_n, &drops::generate>;
+   using transfer_action    = eosio::action_wrapper<"transfer"_n, &drops::transfer>;
+   using destroy_action     = eosio::action_wrapper<"destroy"_n, &drops::destroy>;
+   using bind_action        = eosio::action_wrapper<"bind"_n, &drops::bind>;
+   using unbind_action      = eosio::action_wrapper<"unbind"_n, &drops::unbind>;
+   using enable_action      = eosio::action_wrapper<"enable"_n, &drops::enable>;
+   using open_action        = eosio::action_wrapper<"open"_n, &drops::open>;
+   using claim_action       = eosio::action_wrapper<"claim"_n, &drops::claim>;
+   using logbalances_action = eosio::action_wrapper<"logbalances"_n, &drops::logbalances>;
+   using logstat_action     = eosio::action_wrapper<"logstat"_n, &drops::logstat>;
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
