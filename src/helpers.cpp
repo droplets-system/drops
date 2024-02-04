@@ -30,24 +30,4 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo)
    ramtransfer.send(get_self(), to, bytes, memo);
 }
 
-void drops::log_balances(const name owner, const int64_t drops, const int64_t ram_bytes)
-{
-   drops::logbalances_action logbalances{get_self(), {get_self(), "active"_n}};
-   logbalances.send(owner, drops, ram_bytes);
-}
-
-void drops::logbalances(const name owner, const int64_t drops, const int64_t ram_bytes)
-{
-   require_auth(get_self());
-   require_recipient(owner);
-}
-
-void drops::log_stat(const int64_t drops, const int64_t ram_bytes)
-{
-   drops::logstat_action logstat{get_self(), {get_self(), "active"_n}};
-   logstat.send(drops, ram_bytes);
-}
-
-void drops::logstat(const int64_t drops, const int64_t ram_bytes) { require_auth(get_self()); }
-
 } // namespace dropssystem
