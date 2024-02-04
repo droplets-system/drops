@@ -313,6 +313,7 @@ void drops::update_ram_bytes(const name owner, const int64_t bytes)
    _balances.modify(balance, auth_ram_payer(owner), [&](auto& row) {
       row.ram_bytes += bytes;
       check(row.ram_bytes >= 0, "Account does not have enough RAM bytes.");
+      log_balances(row.owner, row.drops, row.ram_bytes);
    });
 
    // add/reduce RAM bytes to contract (used for global limits)
@@ -320,6 +321,7 @@ void drops::update_ram_bytes(const name owner, const int64_t bytes)
    stat.ram_bytes += bytes;
    check(stat.ram_bytes >= 0, "Contract does not have enough RAM bytes."); // should never happen
    _stat.set(stat, get_self());
+   log_stat(stat.drops, stat.ram_bytes);
 }
 
 void drops::add_drops(const name owner, const int64_t amount) { return update_drops(name(), owner, amount); }
@@ -342,13 +344,19 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
    // sender (if empty, minting new drops)
    if (from.value) {
       auto& balance_from = _balances.get(from.value, ERROR_OPEN_BALANCE.c_str());
-      _balances.modify(balance_from, auth_ram_payer(from), [&](auto& row) { row.drops -= amount; });
+      _balances.modify(balance_from, auth_ram_payer(from), [&](auto& row) {
+         row.drops -= amount;
+         log_balances(row.owner, row.drops, row.ram_bytes);
+      });
    }
 
    // receiver (if empty, burning drops)
    if (to.value) {
       auto& balance_to = _balances.get(to.value, ERROR_OPEN_BALANCE.c_str());
-      _balances.modify(balance_to, same_payer, [&](auto& row) { row.drops += amount; });
+      _balances.modify(balance_to, same_payer, [&](auto& row) {
+         row.drops += amount;
+         log_balances(row.owner, row.drops, row.ram_bytes);
+      });
    }
 
    // add drops to contract (used for global limits)
@@ -366,6 +374,7 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
          check(stat.drops >= 0, "Contract does not have enough drops."); // should never happen
       }
       _stat.set(stat, get_self());
+      log_stat(stat.drops, stat.ram_bytes);
    }
 }
 
