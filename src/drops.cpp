@@ -56,7 +56,7 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 }
 
 // @user
-[[eosio::action]] int64_t drops::generate(
+[[eosio::action]] drops::generate_return_value drops::generate(
    const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
 {
    require_auth(owner);
@@ -64,12 +64,13 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    check_is_enabled(get_self());
    check(owner != get_self(), "Cannot generate drops for contract.");
    open_balance(owner, owner);
-   const int64_t bytes = emplace_drops(owner, bound, amount, data);
+   const generate_return_value return_value = emplace_drops(owner, bound, amount, data);
    add_drops(owner, amount);
-   return bytes;
+   return return_value;
 }
 
-int64_t drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data)
+drops::generate_return_value
+drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data)
 {
    drop_table drops(get_self(), get_self().value);
 
@@ -101,12 +102,12 @@ int64_t drops::emplace_drops(const name owner, const bool bound, const uint32_t 
 
    // generating unbond drops consumes contract RAM bytes to owner
    if (bound == false) {
-      const int64_t bytes = amount * get_bytes_per_drop();
-      reduce_ram_bytes(owner, bytes);
-      return bytes;
+      const int64_t bytes      = amount * get_bytes_per_drop();
+      const int64_t newBalance = reduce_ram_bytes(owner, bytes);
+      return {bytes, newBalance};
    }
    // bound drops do not consume contract RAM bytes
-   return 0;
+   return {0, 0};
 }
 
 uint64_t drops::hash_data(const string data)
@@ -335,26 +336,29 @@ bool drops::open_balance(const name owner, const name ram_payer)
    return 0;
 }
 
-void drops::add_ram_bytes(const name owner, const int64_t bytes) { update_ram_bytes(owner, bytes); }
+int64_t drops::add_ram_bytes(const name owner, const int64_t bytes) { return update_ram_bytes(owner, bytes); }
 
-void drops::reduce_ram_bytes(const name owner, const int64_t bytes) { update_ram_bytes(owner, -bytes); }
+int64_t drops::reduce_ram_bytes(const name owner, const int64_t bytes) { return update_ram_bytes(owner, -bytes); }
 
-void drops::update_ram_bytes(const name owner, const int64_t bytes)
+int64_t drops::update_ram_bytes(const name owner, const int64_t bytes)
 {
-   modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
    modify_ram_bytes(get_self(), bytes, get_self());
+   return modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
 }
 
 void drops::modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer)
 {
    drops::balances_table _balances(get_self(), get_self().value);
-   auto&                 balance = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
+   auto&                 balance         = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
+   int64_t               newBytesBalance = 0;
    _balances.modify(balance, auth_ram_payer(owner), [&](auto& row) {
       const int64_t before_ram_bytes = row.ram_bytes;
       row.ram_bytes += bytes;
+      newBytesBalance = row.ram_bytes;
       check(row.ram_bytes >= 0, owner.to_string() + " does not have enough RAM bytes.");
       log_ram_bytes(row.owner, before_ram_bytes, row.ram_bytes);
    });
+   return newBytesBalance;
 }
 
 void drops::add_drops(const name owner, const int64_t amount) { return update_drops(name(), owner, amount); }

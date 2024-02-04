@@ -134,6 +134,13 @@ public:
    typedef eosio::multi_index<"balances"_n, balances_row> balances_table;
 
    // @return
+   struct generate_return_value
+   {
+      int64_t bytes_used;
+      int64_t bytes_balance;
+   };
+
+   // @return
    struct destroy_return_value
    {
       int64_t unbound_destroyed;
@@ -145,7 +152,7 @@ public:
    on_transfer(const name from, const name to, const asset quantity, const string memo);
 
    // @user
-   [[eosio::action]] int64_t generate(
+   [[eosio::action]] generate_return_value generate(
       const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
 
    // @user
@@ -262,10 +269,10 @@ private:
    void notify(const optional<name> to_notify);
 
    // ram balances helpers
-   void update_ram_bytes(const name owner, const int64_t bytes);
-   void add_ram_bytes(const name owner, const int64_t bytes);
-   void reduce_ram_bytes(const name owner, const int64_t bytes);
-   void modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer);
+   int64_t update_ram_bytes(const name owner, const int64_t bytes);
+   int64_t add_ram_bytes(const name owner, const int64_t bytes);
+   int64_t reduce_ram_bytes(const name owner, const int64_t bytes);
+   int64_t modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer);
 
    // drop balances helpers
    void update_drops(const name from, const name to, const int64_t amount);
@@ -282,8 +289,8 @@ private:
    name auth_ram_payer(const name owner);
 
    // create and destroy
-   int64_t emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
-   bool    destroy_drop(const uint64_t drop_id, const name owner);
+   generate_return_value emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
+   bool                  destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
    void log_drops(const name owner, const int64_t before_drops, const int64_t drops);
