@@ -290,7 +290,12 @@ bool drops::open_balance(const name owner, const name ram_payer)
    const int64_t ram_bytes = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str()).ram_bytes;
    if (ram_bytes > 0) {
       reduce_ram_bytes(owner, ram_bytes);
-      transfer_ram(owner, ram_bytes, MEMO_RAM_TRANSFER);
+      if (FLAG_RAM_TRANSFER_ON_CLAIM) {
+         transfer_ram(owner, ram_bytes, MEMO_RAM_TRANSFER);
+      } else {
+         const asset quantity = eosiosystem::ram_proceeds_minus_fee(ram_bytes, EOS);
+         transfer_tokens(owner, quantity, MEMO_RAM_SOLD_TRANSFER);
+      }
       return ram_bytes;
    }
    // else: account does not have any RAM bytes to claim

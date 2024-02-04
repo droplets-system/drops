@@ -24,10 +24,12 @@ static const string ERROR_ACCOUNT_NOT_EXISTS = "Account does not exist.";
 static const string ERROR_NO_DROPS           = "No drops were provided.";
 
 // memo messages
-static const string MEMO_RAM_TRANSFER = "Claiming RAM bytes.";
+static const string MEMO_RAM_TRANSFER      = "Claiming RAM bytes.";
+static const string MEMO_RAM_SOLD_TRANSFER = "Claiming sold RAM bytes.";
 
 // feature flags
 static const bool FLAG_FORCE_RECEIVER_TO_BE_SENDER = true;
+static const bool FLAG_RAM_TRANSFER_ON_CLAIM = false; // not available until system contract supports `ramtransfer`
 
 uint128_t combine_ids(const uint64_t& v1, const uint64_t& v2) { return (uint128_t{v1} << 64) | v2; }
 
