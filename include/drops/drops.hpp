@@ -167,14 +167,18 @@ public:
    on_transfer(const name from, const name to, const asset quantity, const string memo);
 
    // @user
-   [[eosio::action]] int64_t generate(const name owner, const bool bound, const uint32_t amount, const string data);
+   [[eosio::action]] int64_t generate(
+      const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
 
    // @user
-   [[eosio::action]] void transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo);
+   [[eosio::action]] void
+   transfer(const name from, const name to, const vector<uint64_t> drops_ids, const optional<string> memo);
 
    // @user
-   [[eosio::action]] destroy_return_value
-   destroy(const name owner, const vector<uint64_t> drops_ids, const string memo);
+   [[eosio::action]] destroy_return_value destroy(const name             owner,
+                                                  const vector<uint64_t> drops_ids,
+                                                  const optional<string> memo,
+                                                  const optional<name>   to_notify);
 
    // @user
    [[eosio::action]] int64_t bind(const name owner, const vector<uint64_t> drops_ids);
@@ -277,6 +281,7 @@ private:
    void buy_ram_bytes(int64_t bytes);
    void sell_ram_bytes(int64_t bytes);
    void buy_ram(const asset quantity);
+   void notify(const optional<name> to_notify);
 
    // ram balances helpers
    void update_ram_bytes(const name owner, const int64_t bytes);

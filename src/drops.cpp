@@ -45,9 +45,11 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 }
 
 // @user
-[[eosio::action]] int64_t drops::generate(const name owner, const bool bound, const uint32_t amount, const string data)
+[[eosio::action]] int64_t drops::generate(
+   const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
 {
    require_auth(owner);
+   notify(to_notify);
    check_is_enabled(get_self());
    open_balance(owner, owner);
    const int64_t bytes = emplace_drops(owner, bound, amount, data);
@@ -106,7 +108,7 @@ uint64_t drops::hash_data(const string data)
 
 // @user
 [[eosio::action]] void
-drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const string memo)
+drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const optional<string> memo)
 {
    require_auth(from);
    check_is_enabled(get_self());
@@ -207,11 +209,22 @@ void drops::check_drop_owner(const drop_row drop, const name owner)
    check(drop.owner == owner, "Drop " + to_string(drop.seed) + " does not belong to account.");
 }
 
+void drops::notify(const optional<name> to_notify)
+{
+   if (to_notify) {
+      check(is_account(*to_notify), ERROR_ACCOUNT_NOT_EXISTS);
+      require_recipient(*to_notify);
+   }
+}
+
 // @user
-[[eosio::action]] drops::destroy_return_value
-drops::destroy(const name owner, const vector<uint64_t> drops_ids, const string memo)
+[[eosio::action]] drops::destroy_return_value drops::destroy(const name             owner,
+                                                             const vector<uint64_t> drops_ids,
+                                                             const optional<string> memo,
+                                                             const optional<name>   to_notify)
 {
    require_auth(owner);
+   notify(to_notify);
 
    check_is_enabled(get_self());
    const int64_t amount = drops_ids.size();
