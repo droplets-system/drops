@@ -101,13 +101,13 @@ drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, 
    }
 
    // generating unbond drops consumes contract RAM bytes to owner
+   const int64_t bytes = amount * get_bytes_per_drop();
    if (bound == false) {
-      const int64_t bytes      = amount * get_bytes_per_drop();
       const int64_t newBalance = reduce_ram_bytes(owner, bytes);
       return {bytes, newBalance};
    }
    // bound drops do not consume contract RAM bytes
-   return {0, 0};
+   return {bytes, 0};
 }
 
 uint64_t drops::hash_data(const string data)
