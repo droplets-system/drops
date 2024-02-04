@@ -105,8 +105,9 @@ asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol)
       check(false, "invalid conversion");
    }
 
-   const int64_t cost_minus_fee = out.amount * double(0.995);
-   return asset{cost_minus_fee, core_symbol};
+   const int64_t fee = (out.amount + 199) / 200; /// .5% fee (round up)
+   out.amount -= fee;
+   return out;
 }
 
 } // namespace eosiosystem
