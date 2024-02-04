@@ -125,29 +125,6 @@ public:
       uint64_t primary_key() const { return owner.value; }
    };
 
-   /**
-    * ## TABLE `stat`
-    *
-    * ### params
-    *
-    * - `{int64_t} drops` - total supply of drops
-    * - `{int64_t} ram_bytes` - total available RAM bytes held by the contract
-    *
-    * ### example
-    *
-    * ```json
-    * {
-    *   "drops": 88888,
-    *   "ram_bytes": 2048
-    * }
-    * ```
-    */
-   struct [[eosio::table("stat")]] stat_row
-   {
-      int64_t drops;
-      int64_t ram_bytes;
-   };
-
    typedef eosio::multi_index<
       "drop"_n,
       drop_row,
@@ -155,7 +132,6 @@ public:
                                                           drop_table;
    typedef eosio::singleton<"state"_n, state_row>         state_table;
    typedef eosio::multi_index<"balances"_n, balances_row> balances_table;
-   typedef eosio::singleton<"stat"_n, stat_row>           stat_table;
 
    // @return
    struct destroy_return_value
@@ -221,24 +197,23 @@ public:
     * ### params
     *
     * - `{name} owner` - owner account to claim RAM bytes
-    * - `{bool} sell_ram` - whether to sell claimed RAM bytes (true = sellram, false = ramtransfer)
     *
     * ### example
     *
     * ```bash
-    * $ cleos push action core.drops claim '["alice", false]' -p alice
+    * $ cleos push action core.drops claim '["alice"]' -p alice
     * ```
     */
-   [[eosio::action]] int64_t claim(const name owner, const bool sell_ram);
+   [[eosio::action]] int64_t claim(const name owner);
 
    // @admin
    [[eosio::action]] void enable(bool enabled);
 
    // @logging
-   [[eosio::action]] void logbalances(const name owner, const int64_t drops, const int64_t ram_bytes);
+   [[eosio::action]] void logrambytes(const name owner, const int64_t before_ram_bytes, const int64_t ram_bytes);
 
    // @logging
-   [[eosio::action]] void logstat(const int64_t drops, const int64_t ram_bytes);
+   [[eosio::action]] void logdrops(const name owner, const int64_t before_drops, const int64_t drops);
 
    // @static
    static bool is_enabled(const name code)
@@ -262,8 +237,8 @@ public:
    using open_action     = eosio::action_wrapper<"open"_n, &drops::open>;
    using claim_action    = eosio::action_wrapper<"claim"_n, &drops::claim>;
 
-   using logbalances_action = eosio::action_wrapper<"logbalances"_n, &drops::logbalances>;
-   using logstat_action     = eosio::action_wrapper<"logstat"_n, &drops::logstat>;
+   using logrambytes_action = eosio::action_wrapper<"logrambytes"_n, &drops::logrambytes>;
+   using logdrops_action    = eosio::action_wrapper<"logdrops"_n, &drops::logdrops>;
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
@@ -290,6 +265,7 @@ private:
    void update_ram_bytes(const name owner, const int64_t bytes);
    void add_ram_bytes(const name owner, const int64_t bytes);
    void reduce_ram_bytes(const name owner, const int64_t bytes);
+   void modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer);
 
    // drop balances helpers
    void update_drops(const name from, const name to, const int64_t amount);
@@ -310,8 +286,8 @@ private:
    bool    destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
-   void log_balances(const name owner, const int64_t drops, const int64_t ram_bytes);
-   void log_stat(const int64_t drops, const int64_t ram_bytes);
+   void log_drops(const name owner, const int64_t before_drops, const int64_t drops);
+   void log_ram_bytes(const name owner, const int64_t before_ram_bytes, const int64_t ram_bytes);
 
 // DEBUG (used to help testing)
 #ifdef DEBUG

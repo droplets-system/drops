@@ -108,24 +108,24 @@ icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897
 
 ---
 
-<h1 class="contract">logbalances</h1>
+<h1 class="contract">logdrops</h1>
 
 ---
 
 spec_version: "0.2.0"
-title: logbalances
-summary: logbalances
+title: logdrops
+summary: logdrops
 icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
 
 ---
 
-<h1 class="contract">logstat</h1>
+<h1 class="contract">logrambytes</h1>
 
 ---
 
 spec_version: "0.2.0"
-title: logstat
-summary: logstat
+title: logrambytes
+summary: logrambytes
 icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
 
 ---

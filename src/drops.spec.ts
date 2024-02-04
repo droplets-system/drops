@@ -29,11 +29,12 @@ function getState(): DropsContract.Types.state_row {
     return DropsContract.Types.state_row.from(row)
 }
 
-function getStat(): DropsContract.Types.stat_row {
-    const scope = Name.from(core_contract).value.value
-    const row = contracts.core.tables.stat(scope).getTableRows()[0]
-    if (!row) throw new Error('Stat not found')
-    return DropsContract.Types.stat_row.from(row)
+function getStat() {
+    return getBalance(core_contract)
+    // const scope = Name.from(core_contract).value.value
+    // const row = contracts.core.tables.stat(scope).getTableRows()[0]
+    // if (!row) throw new Error('Stat not found')
+    // return DropsContract.Types.stat_row.from(row)
 }
 
 function getTokenBalance(account: string) {
@@ -135,7 +136,7 @@ describe(core_contract, () => {
             .send(alice)
         const after = getBalance(alice)
         const tokenAfter = getTokenBalance(alice)
-        expect(after.ram_bytes.toNumber() - 0).toBe(87550)
+        expect(after.ram_bytes.toNumber()).toBe(87550)
 
         // should not receive any EOS refunds on transfer
         expect(tokenAfter.value - tokenBefore.value).toBe(-10)
@@ -236,6 +237,14 @@ describe(core_contract, () => {
             action,
             'eosio_assert_message: Drop 10272988527514872302 already exists.'
         )
+    })
+
+    test('generate::error - contract cannot generate', async () => {
+        const action = contracts.core.actions
+            .generate([core_contract, false, 1, '1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+            .send(core_contract)
+
+        await expectToThrow(action, 'eosio_assert: Cannot generate drops for contract.')
     })
 
     test('generate 1K', async () => {
@@ -436,5 +445,13 @@ describe(core_contract, () => {
     test('transfer::error - no drops', async () => {
         const action = contracts.core.actions.transfer([bob, alice, [], '']).send(bob)
         await expectToThrow(action, ERROR_NO_DROPS)
+    })
+
+    test('transfer::error - can not transfer to contract', async () => {
+        const drop_id = 17855725969634623351n
+        const action = contracts.core.actions
+            .transfer([bob, core_contract, [String(drop_id)], ''])
+            .send(bob)
+        await expectToThrow(action, 'eosio_assert: Cannot transfer to contract.')
     })
 })

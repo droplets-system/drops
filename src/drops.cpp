@@ -17,8 +17,19 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 {
    // ignore RAM sales
    // ignore transfers not sent to this contract
-   // ignore transfers sent from this contract
-   if (from == "eosio.ram"_n || to != get_self() || from == get_self()) {
+   if (from == "eosio.ram"_n || to != get_self()) {
+      return 0;
+   }
+   // ignore transfers sent from this contract to purchase RAM
+   // otherwise revert transaction if sending EOS outside of this contract if RAM transfer is enabled
+   if (from == get_self()) {
+      if (to == "eosio.ram"_n || to == "eosio.ramfee"_n) {
+         return 0;
+      }
+      // safety check to prevent sending EOS outside of this contract when RAM transfer is enabled
+      if (FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM) {
+         check(false, "RAM transfer is enabled. Use `claim` to claim RAM bytes.");
+      }
       return 0;
    }
 
@@ -51,6 +62,7 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    require_auth(owner);
    notify(to_notify);
    check_is_enabled(get_self());
+   check(owner != get_self(), "Cannot generate drops for contract.");
    open_balance(owner, owner);
    const int64_t bytes = emplace_drops(owner, bound, amount, data);
    add_drops(owner, amount);
@@ -114,6 +126,8 @@ drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids
    check_is_enabled(get_self());
 
    check(is_account(to), ERROR_ACCOUNT_NOT_EXISTS);
+   check(to != from, "Cannot transfer to self.");
+   check(to != get_self(), "Cannot transfer to contract.");
    const int64_t amount = drops_ids.size();
    check(amount > 0, ERROR_NO_DROPS);
    open_balance(to, from);
@@ -294,7 +308,7 @@ bool drops::open_balance(const name owner, const name ram_payer)
 }
 
 // @user
-[[eosio::action]] int64_t drops::claim(const name owner, const bool sell_ram)
+[[eosio::action]] int64_t drops::claim(const name owner)
 {
    require_auth(owner);
 
@@ -303,13 +317,16 @@ bool drops::open_balance(const name owner, const name ram_payer)
    const int64_t ram_bytes = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str()).ram_bytes;
    if (ram_bytes > 0) {
       reduce_ram_bytes(owner, ram_bytes);
-      if (sell_ram) {
+
+      // if enabled, transfer RAM bytes to owner
+      if (FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM) {
+         transfer_ram(owner, ram_bytes, MEMO_RAM_TRANSFER);
+
+         // else, sell RAM bytes and transfer EOS to owner (0.5% fee to system contract)
+      } else {
          sell_ram_bytes(ram_bytes);
          const asset quantity = eosiosystem::ram_proceeds_minus_fee(ram_bytes, EOS);
          transfer_tokens(owner, quantity, MEMO_RAM_SOLD_TRANSFER);
-      } else {
-         check(FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM, "RAM transfer on claim is disabled.");
-         transfer_ram(owner, ram_bytes, MEMO_RAM_TRANSFER);
       }
       return ram_bytes;
    }
@@ -318,30 +335,26 @@ bool drops::open_balance(const name owner, const name ram_payer)
    return 0;
 }
 
-void drops::add_ram_bytes(const name owner, const int64_t bytes) { return update_ram_bytes(owner, bytes); }
+void drops::add_ram_bytes(const name owner, const int64_t bytes) { update_ram_bytes(owner, bytes); }
 
-void drops::reduce_ram_bytes(const name owner, const int64_t bytes) { return update_ram_bytes(owner, -bytes); }
+void drops::reduce_ram_bytes(const name owner, const int64_t bytes) { update_ram_bytes(owner, -bytes); }
 
 void drops::update_ram_bytes(const name owner, const int64_t bytes)
 {
+   modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
+   modify_ram_bytes(get_self(), bytes, get_self());
+}
+
+void drops::modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer)
+{
    drops::balances_table _balances(get_self(), get_self().value);
-   drops::stat_table     _stat(get_self(), get_self().value);
-
-   // add/reduce RAM bytes to account
-   auto& balance = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
-
+   auto&                 balance = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
    _balances.modify(balance, auth_ram_payer(owner), [&](auto& row) {
+      const int64_t before_ram_bytes = row.ram_bytes;
       row.ram_bytes += bytes;
-      check(row.ram_bytes >= 0, "Account does not have enough RAM bytes.");
-      log_balances(row.owner, row.drops, row.ram_bytes);
+      check(row.ram_bytes >= 0, owner.to_string() + " does not have enough RAM bytes.");
+      log_ram_bytes(row.owner, before_ram_bytes, row.ram_bytes);
    });
-
-   // add/reduce RAM bytes to contract (used for global limits)
-   auto stat = _stat.get_or_default();
-   stat.ram_bytes += bytes;
-   check(stat.ram_bytes >= 0, "Contract does not have enough RAM bytes."); // should never happen
-   _stat.set(stat, get_self());
-   log_stat(stat.drops, stat.ram_bytes);
 }
 
 void drops::add_drops(const name owner, const int64_t amount) { return update_drops(name(), owner, amount); }
@@ -359,14 +372,15 @@ name drops::auth_ram_payer(const name owner) { return has_auth(owner) ? owner : 
 void drops::update_drops(const name from, const name to, const int64_t amount)
 {
    drops::balances_table _balances(get_self(), get_self().value);
-   drops::stat_table     _stat(get_self(), get_self().value);
 
    // sender (if empty, minting new drops)
    if (from.value) {
       auto& balance_from = _balances.get(from.value, ERROR_OPEN_BALANCE.c_str());
       _balances.modify(balance_from, auth_ram_payer(from), [&](auto& row) {
+         const int64_t before_drops = row.drops;
          row.drops -= amount;
-         log_balances(row.owner, row.drops, row.ram_bytes);
+         log_drops(row.owner, before_drops, row.drops);
+         check(row.drops >= 0, "Account does not have enough drops."); // should never happen
       });
    }
 
@@ -374,27 +388,29 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
    if (to.value) {
       auto& balance_to = _balances.get(to.value, ERROR_OPEN_BALANCE.c_str());
       _balances.modify(balance_to, same_payer, [&](auto& row) {
+         const int64_t before_drops = row.drops;
          row.drops += amount;
-         log_balances(row.owner, row.drops, row.ram_bytes);
+         log_drops(row.owner, before_drops, row.drops);
       });
    }
 
    // add drops to contract (used for global limits)
    // NOTE: a way to keep track of the total amount of drops in the system
    if (from.value == 0 || to.value == 0) {
-      auto stat = _stat.get_or_default();
+      auto& balance_self = _balances.get(get_self().value, ERROR_OPEN_BALANCE.c_str());
 
-      // mint
-      if (from.value == 0) {
-         stat.drops += amount;
-
-         // burn
-      } else if (to.value == 0) {
-         stat.drops -= amount;
-         check(stat.drops >= 0, "Contract does not have enough drops."); // should never happen
-      }
-      _stat.set(stat, get_self());
-      log_stat(stat.drops, stat.ram_bytes);
+      _balances.modify(balance_self, same_payer, [&](auto& row) {
+         const int64_t before_drops = row.drops;
+         // mint
+         if (from.value == 0) {
+            row.drops += amount;
+            // burn
+         } else if (to.value == 0) {
+            row.drops -= amount;
+         }
+         check(row.drops >= 0, "Contract does not have enough drops."); // should never happen
+         log_drops(row.owner, before_drops, row.drops);
+      });
    }
 }
 
@@ -405,6 +421,13 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
 
    drops::state_table _state(get_self(), get_self().value);
 
+   // open balance for contract to track global limits
+   // NOTE: this is required to track the total amount of drops & RAM bytes in the system
+   open_balance(get_self(), get_self());
+
+   // enabling contract for the first time will also initiate `genesis` and `bytes_per_drop` values
+   // NOTE: `genesis` is the time when the contract was first enabled
+   // NOTE: `bytes_per_drop` is the amount of RAM bytes required to store a single drop
    auto state    = _state.get_or_default();
    state.enabled = enabled;
    _state.set(state, get_self());
