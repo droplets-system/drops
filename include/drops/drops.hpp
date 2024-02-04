@@ -232,12 +232,10 @@ public:
    [[eosio::action]] void enable(bool enabled);
 
    // @logging
-   [[eosio::action]]
-   void logbalances(const name owner, const int64_t drops, const int64_t ram_bytes);
+   [[eosio::action]] void logbalances(const name owner, const int64_t drops, const int64_t ram_bytes);
 
    // @logging
-   [[eosio::action]]
-   void logstat(const int64_t drops, const int64_t ram_bytes);
+   [[eosio::action]] void logstat(const int64_t drops, const int64_t ram_bytes);
 
    // @static
    static bool is_enabled(const name code)
