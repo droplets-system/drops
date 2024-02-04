@@ -294,7 +294,7 @@ bool drops::open_balance(const name owner, const name ram_payer)
 }
 
 // @user
-[[eosio::action]] int64_t drops::claim(const name owner)
+[[eosio::action]] int64_t drops::claim(const name owner, const bool sell_ram)
 {
    require_auth(owner);
 
@@ -303,11 +303,13 @@ bool drops::open_balance(const name owner, const name ram_payer)
    const int64_t ram_bytes = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str()).ram_bytes;
    if (ram_bytes > 0) {
       reduce_ram_bytes(owner, ram_bytes);
-      if (FLAG_RAM_TRANSFER_ON_CLAIM) {
-         transfer_ram(owner, ram_bytes, MEMO_RAM_TRANSFER);
-      } else {
+      if (sell_ram) {
+         sell_ram_bytes(ram_bytes);
          const asset quantity = eosiosystem::ram_proceeds_minus_fee(ram_bytes, EOS);
          transfer_tokens(owner, quantity, MEMO_RAM_SOLD_TRANSFER);
+      } else {
+         check(FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM, "RAM transfer on claim is disabled.");
+         transfer_ram(owner, ram_bytes, MEMO_RAM_TRANSFER);
       }
       return ram_bytes;
    }

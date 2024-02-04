@@ -105,8 +105,7 @@ asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol)
       check(false, "invalid conversion");
    }
 
-   const int64_t fee = (out.amount + 199) / 200; /// .5% fee (round up)
-   out.amount -= fee;
+   out -= get_fee(out);
    return out;
 }
 

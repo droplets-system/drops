@@ -29,7 +29,9 @@ static const string MEMO_RAM_SOLD_TRANSFER = "Claiming sold RAM bytes.";
 
 // feature flags
 static const bool FLAG_FORCE_RECEIVER_TO_BE_SENDER = true;
-static const bool FLAG_RAM_TRANSFER_ON_CLAIM = false; // not available until system contract supports `ramtransfer`
+
+// not available until system contract supports `ramtransfer`
+static const bool FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM = false;
 
 uint128_t combine_ids(const uint64_t& v1, const uint64_t& v2) { return (uint128_t{v1} << 64) | v2; }
 
@@ -219,23 +221,24 @@ public:
     * ### params
     *
     * - `{name} owner` - owner account to claim RAM bytes
+    * - `{bool} sell_ram` - whether to sell claimed RAM bytes (true = sellram, false = ramtransfer)
     *
     * ### example
     *
     * ```bash
-    * $ cleos push action core.drops claim '["alice"]' -p alice
+    * $ cleos push action core.drops claim '["alice", false]' -p alice
     * ```
     */
-   [[eosio::action]] int64_t claim(const name owner);
+   [[eosio::action]] int64_t claim(const name owner, const bool sell_ram);
 
    // @admin
    [[eosio::action]] void enable(bool enabled);
 
    // @logging
-   void logbalances(const name owner, const int64_t drops, const int64_t ram_bytes);
+   [[eosio::action]] void logbalances(const name owner, const int64_t drops, const int64_t ram_bytes);
 
    // @logging
-   void logstat(const int64_t drops, const int64_t ram_bytes);
+   [[eosio::action]] void logstat(const int64_t drops, const int64_t ram_bytes);
 
    // @static
    static bool is_enabled(const name code)

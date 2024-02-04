@@ -32,8 +32,8 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo)
 
 void drops::log_balances(const name owner, const int64_t drops, const int64_t ram_bytes)
 {
-   drops::logbalances_action logbalances{get_self(), {get_self(), "active"_n}};
-   logbalances.send(owner, drops, ram_bytes);
+   drops::logbalances_action logbalances_act{get_self(), {get_self(), "active"_n}};
+   logbalances_act.send(owner, drops, ram_bytes);
 }
 
 void drops::logbalances(const name owner, const int64_t drops, const int64_t ram_bytes)
@@ -44,8 +44,8 @@ void drops::logbalances(const name owner, const int64_t drops, const int64_t ram
 
 void drops::log_stat(const int64_t drops, const int64_t ram_bytes)
 {
-   drops::logstat_action logstat{get_self(), {get_self(), "active"_n}};
-   logstat.send(drops, ram_bytes);
+   drops::logstat_action logstat_act{get_self(), {get_self(), "active"_n}};
+   logstat_act.send(drops, ram_bytes);
 }
 
 void drops::logstat(const int64_t drops, const int64_t ram_bytes) { require_auth(get_self()); }
