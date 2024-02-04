@@ -227,6 +227,12 @@ public:
    // @admin
    [[eosio::action]] void enable(bool enabled);
 
+   // @logging
+   void logbalances(const name owner, const int64_t drops, const int64_t ram_bytes);
+
+   // @logging
+   void logstat(const int64_t drops, const int64_t ram_bytes);
+
    // @static
    static bool is_enabled(const name code)
    {
@@ -248,6 +254,9 @@ public:
    using enable_action   = eosio::action_wrapper<"enable"_n, &drops::enable>;
    using open_action     = eosio::action_wrapper<"open"_n, &drops::open>;
    using claim_action    = eosio::action_wrapper<"claim"_n, &drops::claim>;
+
+   using logbalances_action = eosio::action_wrapper<"logbalances"_n, &drops::logbalances>;
+   using logstat_action     = eosio::action_wrapper<"logstat"_n, &drops::logstat>;
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
@@ -291,6 +300,10 @@ private:
    // create and destroy
    int64_t emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
    bool    destroy_drop(const uint64_t drop_id, const name owner);
+
+   // logging
+   void log_balances(const name owner, const int64_t drops, const int64_t ram_bytes);
+   void log_stat(const int64_t drops, const int64_t ram_bytes);
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
