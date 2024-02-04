@@ -24,7 +24,7 @@ static const string ERROR_ACCOUNT_NOT_EXISTS = "Account does not exist.";
 static const string ERROR_NO_DROPS           = "No drops were provided.";
 
 // memo messages
-static const string MEMO_RAM_TRANSFER = "Claiming RAM bytes.";
+static const string MEMO_RAM_TRANSFER      = "Claiming RAM bytes.";
 static const string MEMO_RAM_SOLD_TRANSFER = "Claiming sold RAM bytes.";
 
 // feature flags
