@@ -346,7 +346,7 @@ int64_t drops::update_ram_bytes(const name owner, const int64_t bytes)
    return modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
 }
 
-void drops::modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer)
+int64_t drops::modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer)
 {
    drops::balances_table _balances(get_self(), get_self().value);
    auto&                 balance         = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
