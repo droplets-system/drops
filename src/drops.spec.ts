@@ -1,4 +1,4 @@
-import {Asset, Name} from '@wharfkit/antelope'
+import {Asset, Bytes, Checksum256, Name, Serializer, UInt64} from '@wharfkit/antelope'
 import {TimePointSec} from '@greymass/eosio'
 import {Blockchain, expectToThrow} from '@proton/vert'
 import {beforeEach, describe, expect, test} from 'bun:test'
@@ -31,10 +31,6 @@ function getState(): DropsContract.Types.state_row {
 
 function getStat() {
     return getBalance(core_contract)
-    // const scope = Name.from(core_contract).value.value
-    // const row = contracts.core.tables.stat(scope).getTableRows()[0]
-    // if (!row) throw new Error('Stat not found')
-    // return DropsContract.Types.stat_row.from(row)
 }
 
 function getTokenBalance(account: string) {
@@ -68,6 +64,18 @@ function getDrops(owner?: string): DropsContract.Types.drop_row[] {
     if (!owner) return rows
     return rows.filter((row) => row.owner === owner)
 }
+
+function toSeed(data: string) {
+    return Serializer.decode({
+        data: Checksum256.hash(Bytes.from(data, 'utf8')).array,
+        type: 'uint64',
+    })
+}
+
+function toHash(seed: UInt64) {
+    return String(Bytes.from(seed.byteArray))
+}
+
 
 // standard error messages
 const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<receiver>")`
@@ -216,6 +224,17 @@ describe(core_contract, () => {
                 bound: true,
             })
         ).toBeTrue()
+
+        // seed should be deterministic
+        expect(toSeed(`0${data}`).toString()).toBe('312217830762532995')
+    })
+
+    test('toSeed', () => {
+        const data = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+        const seed = toSeed(`0${data}`)
+        const hash = toHash(seed)
+        expect(seed.toString()).toBe('312217830762532995')
+        expect(hash.toString()).toBe('83d0247f76385504')
     })
 
     test('generate - with unopened balance', async () => {
