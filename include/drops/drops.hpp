@@ -273,6 +273,7 @@ private:
    int64_t add_ram_bytes(const name owner, const int64_t bytes);
    int64_t reduce_ram_bytes(const name owner, const int64_t bytes);
    int64_t modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer);
+   int64_t get_ram_bytes(const name owner);
 
    // drop balances helpers
    void update_drops(const name from, const name to, const int64_t amount);

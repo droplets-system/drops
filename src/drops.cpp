@@ -107,7 +107,8 @@ drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, 
       return {bytes, newBalance};
    }
    // bound drops do not consume contract RAM bytes
-   return {bytes, 0};
+   auto balance = get_ram_bytes(owner);
+   return {bytes, balance};
 }
 
 uint64_t drops::hash_data(const string data)
@@ -359,6 +360,13 @@ int64_t drops::modify_ram_bytes(const name owner, const int64_t bytes, const nam
       log_ram_bytes(row.owner, before_ram_bytes, row.ram_bytes);
    });
    return newBytesBalance;
+}
+
+int64_t drops::get_ram_bytes(const name owner)
+{
+   drops::balances_table _balances(get_self(), get_self().value);
+   auto&                 balance = _balances.get(owner.value, ERROR_OPEN_BALANCE.c_str());
+   return balance.ram_bytes;
 }
 
 void drops::add_drops(const name owner, const int64_t amount) { return update_drops(name(), owner, amount); }
