@@ -2,8 +2,18 @@ SHELL := /bin/bash
 TEST_FILES := $(shell find src -name '*.ts')
 BIN := ./node_modules/.bin
 
+TESTNET_NODE_URL = https://jungle4.greymass.com
+TESTNET_ACCOUNT_NAME = drops
+CONTRACT_NAME = drops
+
 build: | build/dir
-	cdt-cpp -abigen -abigen_output=build/drops.abi -o build/drops.wasm src/drops.cpp -R src -I include -D DEBUG
+	cdt-cpp -abigen -abigen_output=build/${CONTRACT_NAME}.abi -o build/${CONTRACT_NAME}.wasm src/drops.cpp -R src -I include -D DEBUG
+
+build/testnet: | build/dir
+	cdt-cpp -abigen -abigen_output=build/${CONTRACT_NAME}.abi -o build/${CONTRACT_NAME}.wasm src/drops.cpp -R src -I include -D DEBUG
+
+build/production: | build/dir
+	cdt-cpp -abigen -abigen_output=build/${CONTRACT_NAME}.abi -o build/${CONTRACT_NAME}.wasm src/drops.cpp -R src -I include
 
 build/dir:
 	mkdir -p build
@@ -18,7 +28,7 @@ test: build node_modules build/drops.ts init/codegen
 init/codegen: codegen/dir codegen/eosio.ts codegen/eosio.token.ts
 
 build/drops.ts:
-	npx @wharfkit/cli generate --json ./build/drops.abi --file ./build/drops.ts drops
+	npx @wharfkit/cli generate --json ./build/${CONTRACT_NAME}.abi --file ./build/${CONTRACT_NAME}.ts drops
 
 codegen/dir:
 	mkdir -p codegen
@@ -34,7 +44,7 @@ check: cppcheck jscheck
 
 .PHONY: cppcheck
 cppcheck:
-	clang-format --dry-run --Werror src/*.cpp include/drops/*.hpp
+	clang-format --dry-run --Werror src/*.cpp include/${CONTRACT_NAME}/*.hpp
 
 .PHONY: jscheck
 jscheck: node_modules
@@ -45,7 +55,7 @@ format: cppformat jsformat
 
 .PHONY: cppformat
 cppformat:
-	clang-format -i src/*.cpp include/drops/*.hpp
+	clang-format -i src/*.cpp include/${CONTRACT_NAME}/*.hpp
 
 .PHONY: jsformat
 jsformat: node_modules
@@ -57,3 +67,18 @@ distclean: clean
 
 node_modules:
 	bun install
+
+testnet: build/testnet
+	cleos -u $(TESTNET_NODE_URL) set contract $(TESTNET_ACCOUNT_NAME) \
+		build/ ${CONTRACT_NAME}.wasm ${CONTRACT_NAME}.abi
+
+.PHONY: testnet/enable
+testnet/enable:
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) enable '{"enabled": true}' -p $(TESTNET_ACCOUNT_NAME)@active
+
+.PHONY: testnet/wipe
+testnet/wipe:
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "balances"}' -p $(TESTNET_ACCOUNT_NAME)@active
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "drop"}' -p $(TESTNET_ACCOUNT_NAME)@active
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "stat"}' -p $(TESTNET_ACCOUNT_NAME)@active
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "state"}' -p $(TESTNET_ACCOUNT_NAME)@active
