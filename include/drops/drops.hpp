@@ -217,10 +217,12 @@ public:
    [[eosio::action]] void enable(bool enabled);
 
    // @logging
-   [[eosio::action]] void logrambytes(const name owner, const int64_t before_ram_bytes, const int64_t ram_bytes);
+   [[eosio::action]] void
+   logrambytes(const name owner, const int64_t bytes, const int64_t before_ram_bytes, const int64_t ram_bytes);
 
    // @logging
-   [[eosio::action]] void logdrops(const name owner, const int64_t before_drops, const int64_t drops);
+   [[eosio::action]] void
+   logdrops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
 
    // @static
    static bool is_enabled(const name code)
@@ -294,8 +296,8 @@ private:
    bool                  destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
-   void log_drops(const name owner, const int64_t before_drops, const int64_t drops);
-   void log_ram_bytes(const name owner, const int64_t before_ram_bytes, const int64_t ram_bytes);
+   void log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
+   void log_ram_bytes(const name owner, const int64_t bytes, const int64_t before_ram_bytes, const int64_t ram_bytes);
 
 // DEBUG (used to help testing)
 #ifdef DEBUG

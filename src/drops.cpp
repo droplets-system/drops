@@ -362,7 +362,7 @@ int64_t drops::modify_ram_bytes(const name owner, const int64_t bytes, const nam
       row.ram_bytes += bytes;
       newBytesBalance = row.ram_bytes;
       check(row.ram_bytes >= 0, owner.to_string() + " does not have enough RAM bytes.");
-      log_ram_bytes(row.owner, before_ram_bytes, row.ram_bytes);
+      log_ram_bytes(row.owner, bytes, before_ram_bytes, row.ram_bytes);
    });
    return newBytesBalance;
 }
@@ -396,7 +396,7 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
       _balances.modify(balance_from, auth_ram_payer(from), [&](auto& row) {
          const int64_t before_drops = row.drops;
          row.drops -= amount;
-         log_drops(row.owner, before_drops, row.drops);
+         log_drops(row.owner, amount, before_drops, row.drops);
          check(row.drops >= 0, "Account does not have enough drops."); // should never happen
       });
    }
@@ -407,7 +407,7 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
       _balances.modify(balance_to, same_payer, [&](auto& row) {
          const int64_t before_drops = row.drops;
          row.drops += amount;
-         log_drops(row.owner, before_drops, row.drops);
+         log_drops(row.owner, amount, before_drops, row.drops);
       });
    }
 
@@ -426,7 +426,7 @@ void drops::update_drops(const name from, const name to, const int64_t amount)
             row.drops -= amount;
          }
          check(row.drops >= 0, "Contract does not have enough drops."); // should never happen
-         log_drops(row.owner, before_drops, row.drops);
+         log_drops(row.owner, amount, before_drops, row.drops);
       });
    }
 }
