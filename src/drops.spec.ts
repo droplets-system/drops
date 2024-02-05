@@ -76,7 +76,6 @@ function toHash(seed: UInt64) {
     return String(Bytes.from(seed.byteArray))
 }
 
-
 // standard error messages
 const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<receiver>")`
 const ERROR_DROP_NOT_FOUND = 'eosio_assert: Drop not found.'
