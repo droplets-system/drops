@@ -176,7 +176,12 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const boo
       // Ensure the bound value is being modified
       check(row.bound != bound, "Drop bound was not modified");
       row.bound = bound;
+      // Change owner to a temporary value to affect the secondary index
+      row.owner = get_self();
    });
+
+   // Change owner back to the actual owner
+   drops.modify(drop, ram_payer, [&](auto& row) { row.owner = owner; });
 }
 
 // @user
