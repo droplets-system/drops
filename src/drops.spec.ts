@@ -5,6 +5,7 @@ import {beforeEach, describe, expect, test} from 'bun:test'
 
 import * as DropsContract from '../build/drops.ts'
 import * as TokenContract from '../codegen/eosio.token.ts'
+import {toHash, toSeed} from './drops.ts'
 
 // Vert EOS VM
 const blockchain = new Blockchain()
@@ -31,10 +32,6 @@ function getState(): DropsContract.Types.state_row {
 
 function getStat() {
     return getBalance(core_contract)
-    // const scope = Name.from(core_contract).value.value
-    // const row = contracts.core.tables.stat(scope).getTableRows()[0]
-    // if (!row) throw new Error('Stat not found')
-    // return DropsContract.Types.stat_row.from(row)
 }
 
 function getTokenBalance(account: string) {
@@ -216,6 +213,17 @@ describe(core_contract, () => {
                 bound: true,
             })
         ).toBeTrue()
+
+        // seed should be deterministic
+        expect(toSeed(`0${data}`).toString()).toBe('312217830762532995')
+    })
+
+    test('toSeed', () => {
+        const data = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+        const seed = toSeed(`0${data}`)
+        const hash = toHash(seed)
+        expect(seed.toString()).toBe('312217830762532995')
+        expect(hash.toString()).toBe('83d0247f76385504')
     })
 
     test('generate - with unopened balance', async () => {
