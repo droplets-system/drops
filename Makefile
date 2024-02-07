@@ -25,6 +25,10 @@ clean:
 test: build node_modules build/drops.ts init/codegen
 	bun test
 
+.PHONY: bench
+bench:
+	bun **/*.bench.ts
+
 init/codegen: codegen/dir codegen/eosio.ts codegen/eosio.token.ts
 
 build/drops.ts:

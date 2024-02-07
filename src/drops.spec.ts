@@ -1,10 +1,11 @@
-import {Asset, Bytes, Checksum256, Name, Serializer, UInt64} from '@wharfkit/antelope'
+import {Asset, Name} from '@wharfkit/antelope'
 import {TimePointSec} from '@greymass/eosio'
 import {Blockchain, expectToThrow} from '@proton/vert'
 import {beforeEach, describe, expect, test} from 'bun:test'
 
 import * as DropsContract from '../build/drops.ts'
 import * as TokenContract from '../codegen/eosio.token.ts'
+import {toHash, toSeed} from './drops.ts'
 
 // Vert EOS VM
 const blockchain = new Blockchain()
@@ -63,17 +64,6 @@ function getDrops(owner?: string): DropsContract.Types.drop_row[] {
     const rows = contracts.core.tables.drop(scope).getTableRows()
     if (!owner) return rows
     return rows.filter((row) => row.owner === owner)
-}
-
-function toSeed(data: string) {
-    return Serializer.decode({
-        data: Checksum256.hash(Bytes.from(data, 'utf8')).array,
-        type: 'uint64',
-    })
-}
-
-function toHash(seed: UInt64) {
-    return String(Bytes.from(seed.byteArray))
 }
 
 // standard error messages
