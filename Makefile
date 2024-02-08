@@ -10,6 +10,9 @@ DEVNET_NODE_URL = https://jungle4.greymass.com
 DEVNET_ACCOUNT_NAME = seeds.gm
 CONTRACT_NAME = drops
 
+build: | build/dir
+	cdt-cpp -abigen -abigen_output=build/${CONTRACT_NAME}.abi -o build/${CONTRACT_NAME}.wasm src/drops.cpp -R src -I include -D DEBUG
+
 build/debug: | build/dir
 	cdt-cpp -abigen -abigen_output=build/${CONTRACT_NAME}.abi -o build/${CONTRACT_NAME}.wasm src/drops.cpp -R src -I include -D DEBUG
 
