@@ -4,6 +4,24 @@
     "types": [],
     "structs": [
         {
+            "name": "buyram",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "quant",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
             "name": "buyrambytes",
             "base": "",
             "fields": [
@@ -59,6 +77,28 @@
             "fields": []
         },
         {
+            "name": "ramtransfer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "bytes",
+                    "type": "int64"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
             "name": "sellram",
             "base": "",
             "fields": [
@@ -75,6 +115,11 @@
     ],
     "actions": [
         {
+            "name": "buyram",
+            "type": "buyram",
+            "ricardian_contract": ""
+        },
+        {
             "name": "buyrambytes",
             "type": "buyrambytes",
             "ricardian_contract": ""
@@ -82,6 +127,11 @@
         {
             "name": "init",
             "type": "init",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "ramtransfer",
+            "type": "ramtransfer",
             "ricardian_contract": ""
         },
         {

@@ -1,11 +1,17 @@
+#pragma once
+
 namespace eosiosystem {
 
 int64_t get_bancor_input(int64_t out_reserve, int64_t inp_reserve, int64_t out);
 
-asset ramcost(uint32_t bytes, symbol core_symbol);
+asset ram_cost(uint32_t bytes, symbol core_symbol);
 
-asset ramcostwithfee(uint32_t bytes, symbol core_symbol);
+asset ram_cost_with_fee(uint32_t bytes, symbol core_symbol);
 
-asset ramproceedstminusfee(uint32_t bytes, symbol core_symbol);
+asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol);
+
+asset get_fee(const asset quantity);
+
+int64_t bytes_cost_with_fee(const asset quantity);
 
 } // namespace eosiosystem
