@@ -187,8 +187,8 @@ describe(core_contract, () => {
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-277)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1)
         expect(
-            getDrop(10272988527514872302n).equals({
-                seed: '10272988527514872302',
+            getDrop(343891094750660754n).equals({
+                seed: '343891094750660754',
                 owner: 'bob',
                 created: '2024-01-29T00:00:00.000',
                 bound: false,
@@ -206,8 +206,8 @@ describe(core_contract, () => {
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(0)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1)
         expect(
-            getDrop(312217830762532995n).equals({
-                seed: '312217830762532995',
+            getDrop(11725508947118797007n).equals({
+                seed: '11725508947118797007',
                 owner: 'bob',
                 created: '2024-01-29T00:00:00.000',
                 bound: true,
@@ -215,15 +215,19 @@ describe(core_contract, () => {
         ).toBeTrue()
 
         // seed should be deterministic
-        expect(toSeed(`0${data}`).toString()).toBe('312217830762532995')
+        const index = 0
+        const sequence = 100
+        expect(toSeed([index, sequence, data].join('')).toString()).toBe('3615493820451389612')
     })
 
     test('toSeed', () => {
         const data = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
-        const seed = toSeed(`0${data}`)
+        const index = 0
+        const sequence = 100
+        const seed = toSeed([index, sequence, data].join(''))
         const hash = toHash(seed)
-        expect(seed.toString()).toBe('312217830762532995')
-        expect(hash.toString()).toBe('83d0247f76385504')
+        expect(seed.toString()).toBe('3615493820451389612')
+        expect(hash.toString()).toBe('ac00a05779d02c32')
     })
 
     test('generate - with unopened balance', async () => {
@@ -236,16 +240,16 @@ describe(core_contract, () => {
         expect(after.drops.toNumber()).toBe(1)
     })
 
-    test('generate::error - already exists', async () => {
-        const action = contracts.core.actions
-            .generate([bob, false, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
-            .send(bob)
+    // test('generate::error - already exists', async () => {
+    //     const action = contracts.core.actions
+    //         .generate([bob, false, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+    //         .send(bob)
 
-        await expectToThrow(
-            action,
-            'eosio_assert_message: Drop 10272988527514872302 already exists.'
-        )
-    })
+    //     await expectToThrow(
+    //         action,
+    //         'eosio_assert_message: Drop 10272988527514872302 already exists.'
+    //     )
+    // })
 
     test('generate::error - contract cannot generate', async () => {
         const action = contracts.core.actions
@@ -279,14 +283,14 @@ describe(core_contract, () => {
         await contracts.core.actions.generate([alice, false, 10, data]).send(alice)
         const before = getBalance(alice)
         await contracts.core.actions
-            .destroy([alice, ['6530728038117924388', '8833355934996727321'], 'memo'])
+            .destroy([alice, ['13991429617541607035', '16719869299757338970'], 'memo'])
             .send(alice)
         const after = getBalance(alice)
 
         // destroy unbound drops should reclaim RAM to owner
         expect(after.ram_bytes.value - before.ram_bytes.value).toBe(277 * 2)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(-2)
-        expect(() => getDrop(6530728038117924388n)).toThrow('Drop not found')
+        expect(() => getDrop(13991429617541607035n)).toThrow('Drop not found')
     })
 
     test('destroy::error - not found', async () => {
@@ -296,17 +300,17 @@ describe(core_contract, () => {
 
     test('destroy::error - must belong to owner', async () => {
         const action = contracts.core.actions
-            .destroy([bob, ['17855725969634623351'], 'memo'])
+            .destroy([bob, ['13913273295484544122'], 'memo'])
             .send(bob)
         await expectToThrow(
             action,
-            'eosio_assert_message: Drop 17855725969634623351 does not belong to account.'
+            'eosio_assert_message: Drop 13913273295484544122 does not belong to account.'
         )
     })
 
     test('destroy::error - missing required authority', async () => {
         const action = contracts.core.actions
-            .destroy([bob, ['17855725969634623351'], 'memo'])
+            .destroy([bob, ['13913273295484544122'], 'memo'])
             .send(alice)
         await expectToThrow(action, 'missing required authority bob')
     })
@@ -318,7 +322,7 @@ describe(core_contract, () => {
 
     test('unbind', async () => {
         const before = getBalance(bob)
-        const drop_id = 18430780622749815321n
+        const drop_id = 18438477392015167831n
         expect(getDrop(drop_id).bound).toBeTruthy()
         await contracts.core.actions.unbind([bob, [String(drop_id)]]).send(bob)
 
@@ -337,16 +341,16 @@ describe(core_contract, () => {
     })
 
     test('unbind::error - does not belong to account', async () => {
-        const action = contracts.core.actions.unbind([alice, ['10272988527514872302']]).send(alice)
+        const action = contracts.core.actions.unbind([alice, ['18438477392015167831']]).send(alice)
         await expectToThrow(
             action,
-            'eosio_assert_message: Drop 10272988527514872302 does not belong to account.'
+            'eosio_assert_message: Drop 18438477392015167831 does not belong to account.'
         )
     })
 
     test('unbind::error - is not bound', async () => {
-        const action = contracts.core.actions.unbind([bob, ['10272988527514872302']]).send(bob)
-        await expectToThrow(action, 'eosio_assert_message: Drop 10272988527514872302 is not bound')
+        const action = contracts.core.actions.unbind([bob, ['18438477392015167831']]).send(bob)
+        await expectToThrow(action, 'eosio_assert_message: Drop 18438477392015167831 is not bound')
     })
 
     test('unbind::error - no drops', async () => {
@@ -356,7 +360,7 @@ describe(core_contract, () => {
 
     test('bind', async () => {
         const before = getBalance(bob)
-        const drop_id = 18430780622749815321n
+        const drop_id = 18438477392015167831n
         expect(getDrop(drop_id).bound).toBeFalsy()
         await contracts.core.actions.bind([bob, [String(drop_id)]]).send(bob)
 
@@ -375,15 +379,15 @@ describe(core_contract, () => {
     })
 
     test('bind::error - does not belong to account', async () => {
-        const action = contracts.core.actions.bind([alice, ['10272988527514872302']]).send(alice)
+        const action = contracts.core.actions.bind([alice, ['18438477392015167831']]).send(alice)
         await expectToThrow(
             action,
-            'eosio_assert_message: Drop 10272988527514872302 does not belong to account.'
+            'eosio_assert_message: Drop 18438477392015167831 does not belong to account.'
         )
     })
 
     test('bind::error - is not unbound', async () => {
-        const drop_id = '18430780622749815321'
+        const drop_id = '18438477392015167831'
         const action = contracts.core.actions.bind([bob, [drop_id]]).send(bob)
         await expectToThrow(action, `eosio_assert_message: Drop ${drop_id} is not unbound`)
     })
@@ -399,7 +403,7 @@ describe(core_contract, () => {
             bob: getBalance(bob),
             stat: getStat(),
         }
-        const drop_id = 17855725969634623351n
+        const drop_id = 13913273295484544122n
         expect(getDrop(drop_id).bound).toBeFalsy()
         await contracts.core.actions.transfer([alice, bob, [String(drop_id)], '']).send(alice)
 
@@ -427,7 +431,7 @@ describe(core_contract, () => {
         const before = {
             bob: getBalance(bob),
         }
-        const drop_id = '17855725969634623351'
+        const drop_id = '13913273295484544122'
         await contracts.core.actions.transfer([bob, charles, [drop_id], '']).send(bob)
         const after = {
             bob: getBalance(bob),
@@ -443,7 +447,7 @@ describe(core_contract, () => {
     })
 
     test('transfer::error - account does not exists', async () => {
-        const drop_id = 17855725969634623351n
+        const drop_id = 13913273295484544122n
         const action = contracts.core.actions
             .transfer([bob, 'foobar', [String(drop_id)], ''])
             .send(bob)
@@ -456,7 +460,7 @@ describe(core_contract, () => {
     })
 
     test('transfer::error - can not transfer to contract', async () => {
-        const drop_id = 17855725969634623351n
+        const drop_id = 13913273295484544122n
         const action = contracts.core.actions
             .transfer([bob, core_contract, [String(drop_id)], ''])
             .send(bob)

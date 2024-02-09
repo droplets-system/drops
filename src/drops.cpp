@@ -80,9 +80,14 @@ drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, 
    // Ensure string length
    check(data.length() >= 32, "Drop data must be at least 32 characters in length.");
 
+   // the sequence is used as a salt to add an extra layer of complexity and randomness to the hashing process.
+   // the sequence is incremented each time a new Drop is generated to ensure that each hash is unique, even if the
+   // input data is the same.
+   const uint64_t sequence = get_sequence();
+
    // Iterate over all drops to be created and insert them into the drops table
    for (int i = 0; i < amount; i++) {
-      const uint64_t seed = hash_data(to_string(i) + data);
+      const uint64_t seed = hash_data(to_string(i) + to_string(sequence + i) + data);
 
       // Ensure first drop does not already exist
       // NOTE: subsequent drops are not checked for performance reasons
@@ -99,6 +104,9 @@ drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, 
          row.created = current_block_time();
       });
    }
+
+   // Set the global sequence to the next value
+   set_sequence(amount);
 
    // generating unbond drops consumes contract RAM bytes to owner
    const int64_t bytes = amount * get_bytes_per_drop();
@@ -454,6 +462,21 @@ int64_t drops::get_bytes_per_drop()
 {
    drops::state_table _state(get_self(), get_self().value);
    return _state.get_or_default().bytes_per_drop;
+}
+
+uint64_t drops::get_sequence()
+{
+   drops::state_table _state(get_self(), get_self().value);
+   return _state.get_or_default().sequence;
+}
+
+uint64_t drops::set_sequence(const int64_t amount)
+{
+   drops::state_table _state(get_self(), get_self().value);
+   auto               state = _state.get_or_default();
+   state.sequence += amount;
+   _state.set(state, get_self());
+   return state.sequence;
 }
 
 } // namespace dropssystem

@@ -78,6 +78,8 @@ public:
     *
     * - `{block_timestamp} genesis` - genesis time when the contract was created
     * - `{int64_t} bytes_per_drop` - amount of RAM bytes required per minting drop
+    * - `{uint64_t} sequence` - sequence is used as a salt to add an extra layer of complexity and randomness to the
+    * hashing process.
     * - `{bool} enabled` - whether the contract is enabled
     *
     * ### example
@@ -86,6 +88,7 @@ public:
     * {
     *   "genesis": "2024-01-29T00:00:00",
     *   "bytes_per_drop": 277,
+    *   "sequence": 0,
     *   "enabled": true
     * }
     * ```
@@ -94,6 +97,7 @@ public:
    {
       block_timestamp genesis        = current_block_time();
       int64_t         bytes_per_drop = 277; // 133 bytes primary row + 144 bytes secondary row
+      uint64_t        sequence       = 0;   // auto-incremented on each drop generation
       bool            enabled        = true;
    };
 
@@ -290,6 +294,10 @@ private:
    void modify_ram_payer(const uint64_t drop_id, const name owner, const bool bound);
    bool open_balance(const name owner, const name ram_payer);
    name auth_ram_payer(const name owner);
+
+   // sequence
+   uint64_t get_sequence();
+   uint64_t set_sequence(const int64_t amount);
 
    // create and destroy
    generate_return_value emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
