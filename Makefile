@@ -100,5 +100,14 @@ dev/enable:
 dev/wipe:
 	cleos -u $(DEVNET_NODE_URL) push action $(DEVNET_ACCOUNT_NAME) cleartable '{"table_name": "balances"}' -p $(DEVNET_ACCOUNT_NAME)@active
 	cleos -u $(DEVNET_NODE_URL) push action $(DEVNET_ACCOUNT_NAME) cleartable '{"table_name": "drop"}' -p $(DEVNET_ACCOUNT_NAME)@active
-	cleos -u $(DEVNET_NODE_URL) push action $(DEVNET_ACCOUNT_NAME) cleartable '{"table_name": "stat"}' -p $(DEVNET_ACCOUNT_NAME)@active
 	cleos -u $(DEVNET_NODE_URL) push action $(DEVNET_ACCOUNT_NAME) cleartable '{"table_name": "state"}' -p $(DEVNET_ACCOUNT_NAME)@active
+
+.PHONY: testnet/enable
+testnet/enable:
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) enable '{"enabled": true}' -p $(TESTNET_ACCOUNT_NAME)@active
+
+.PHONY: testnet/wipe
+testnet/wipe:
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "balances"}' -p $(TESTNET_ACCOUNT_NAME)@active
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "drop"}' -p $(TESTNET_ACCOUNT_NAME)@active
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "state"}' -p $(TESTNET_ACCOUNT_NAME)@active
