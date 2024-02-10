@@ -229,14 +229,13 @@ public:
    logdrops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
 
    // @logging
-   [[eosio::action]] void logdestroy(const name                    owner,
-                                     const vector<uint64_t>        drops_ids,
-                                     const vector<block_timestamp> created,
-                                     const int64_t                 destroyed,
-                                     const int64_t                 unbound_destroyed,
-                                     const int64_t                 bytes_reclaimed,
-                                     optional<string>              memo,
-                                     optional<name>                to_notify);
+   [[eosio::action]] void logdestroy(const name             owner,
+                                     const vector<drop_row> drops,
+                                     const int64_t          destroyed,
+                                     const int64_t          unbound_destroyed,
+                                     const int64_t          bytes_reclaimed,
+                                     optional<string>       memo,
+                                     optional<name>         to_notify);
 
    // @static
    static bool is_enabled(const name code)

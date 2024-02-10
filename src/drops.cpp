@@ -261,15 +261,15 @@ void drops::notify(const optional<name> to_notify)
    reduce_drops(owner, amount);
 
    // The number of bound drops that were destroyed
-   int64_t                 unbound_destroyed = 0;
-   vector<block_timestamp> created;
+   int64_t          unbound_destroyed = 0;
+   vector<drop_row> drops;
    for (const uint64_t drop_id : drops_ids) {
       // Count the number of "bound=false" drops destroyed
       const drop_row drop = destroy_drop(drop_id, owner);
       if (drop.bound == false) {
          unbound_destroyed++;
       }
-      created.push_back(drop.created);
+      drops.push_back(drop);
    }
 
    // Calculate how much of their own RAM the account reclaimed
@@ -280,8 +280,7 @@ void drops::notify(const optional<name> to_notify)
 
    // logging
    drops::logdestroy_action logdestroy_act{get_self(), {get_self(), "active"_n}};
-   logdestroy_act.send(owner, drops_ids, created, drops_ids.size(), unbound_destroyed, bytes_reclaimed, memo,
-                       to_notify);
+   logdestroy_act.send(owner, drops, drops_ids.size(), unbound_destroyed, bytes_reclaimed, memo, to_notify);
 
    // action return value
    return {unbound_destroyed, bytes_reclaimed};

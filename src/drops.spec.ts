@@ -299,7 +299,7 @@ describe(core_contract, () => {
         expect(logdestroy.bytes_reclaimed.toNumber()).toEqual(554)
         expect(logdestroy.unbound_destroyed.toNumber()).toEqual(2)
         expect(logdestroy.destroyed.toNumber()).toEqual(2)
-        expect(logdestroy.created.map((v) => v.toString())).toEqual([
+        expect(logdestroy.drops.map((v) => v.created.toString())).toEqual([
             '2024-01-29T00:00:00.000',
             '2024-01-29T00:00:00.000',
         ])
