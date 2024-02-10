@@ -43,7 +43,7 @@ void drops::logrambytes(const name owner, const int64_t bytes, const int64_t bef
 {
    require_auth(get_self());
    if (owner != get_self())
-      require_recipient(owner);
+      notify(owner);
 }
 
 void drops::log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops)
@@ -56,7 +56,24 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
 {
    require_auth(get_self());
    if (owner != get_self()) {
-      require_recipient(owner);
+      notify(owner);
+   }
+}
+
+[[eosio::action]] void drops::logdestroy(const name             owner,
+                                         const vector<drop_row> drops,
+                                         const int64_t          destroyed,
+                                         const int64_t          unbound_destroyed,
+                                         const int64_t          bytes_reclaimed,
+                                         optional<string>       memo,
+                                         optional<name>         to_notify)
+{
+   require_auth(get_self());
+   if (owner != get_self()) {
+      notify(owner);
+   }
+   if (to_notify) {
+      notify(to_notify);
    }
 }
 

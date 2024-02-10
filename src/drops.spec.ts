@@ -291,6 +291,18 @@ describe(core_contract, () => {
         expect(after.ram_bytes.value - before.ram_bytes.value).toBe(277 * 2)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(-2)
         expect(() => getDrop(13991429617541607035n)).toThrow('Drop not found')
+
+        // logging
+        const logdestroy = DropsContract.Types.logdestroy.from(
+            blockchain.actionTraces[5].decodedData
+        )
+        expect(logdestroy.bytes_reclaimed.toNumber()).toEqual(554)
+        expect(logdestroy.unbound_destroyed.toNumber()).toEqual(2)
+        expect(logdestroy.destroyed.toNumber()).toEqual(2)
+        expect(logdestroy.drops.map((v) => v.created.toString())).toEqual([
+            '2024-01-29T00:00:00.000',
+            '2024-01-29T00:00:00.000',
+        ])
     })
 
     test('destroy::error - not found', async () => {
