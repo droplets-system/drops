@@ -43,7 +43,7 @@ void drops::logrambytes(const name owner, const int64_t bytes, const int64_t bef
 {
    require_auth(get_self());
    if (owner != get_self())
-      require_recipient(owner);
+      notify(owner);
 }
 
 void drops::log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops)
@@ -56,7 +56,7 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
 {
    require_auth(get_self());
    if (owner != get_self()) {
-      require_recipient(owner);
+      notify(owner);
    }
 }
 
@@ -70,10 +70,10 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
 {
    require_auth(get_self());
    if (owner != get_self()) {
-      require_recipient(owner);
+      notify(owner);
    }
    if (to_notify) {
-      require_recipient(*to_notify);
+      notify(to_notify);
    }
 }
 
