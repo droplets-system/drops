@@ -228,6 +228,16 @@ public:
    [[eosio::action]] void
    logdrops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
 
+   // @logging
+   [[eosio::action]] void logdestroy(const name                    owner,
+                                     const vector<uint64_t>        drops_ids,
+                                     const vector<block_timestamp> created,
+                                     const int64_t                 destroyed,
+                                     const int64_t                 unbound_destroyed,
+                                     const int64_t                 bytes_reclaimed,
+                                     optional<string>              memo,
+                                     optional<name>                to_notify);
+
    // @static
    static bool is_enabled(const name code)
    {
@@ -252,6 +262,7 @@ public:
 
    using logrambytes_action = eosio::action_wrapper<"logrambytes"_n, &drops::logrambytes>;
    using logdrops_action    = eosio::action_wrapper<"logdrops"_n, &drops::logdrops>;
+   using logdestroy_action  = eosio::action_wrapper<"logdestroy"_n, &drops::logdestroy>;
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
@@ -301,7 +312,7 @@ private:
 
    // create and destroy
    generate_return_value emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
-   bool                  destroy_drop(const uint64_t drop_id, const name owner);
+   drop_row              destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
    void log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
