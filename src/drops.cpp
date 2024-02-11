@@ -378,8 +378,9 @@ int64_t drops::reduce_ram_bytes(const name owner, const int64_t bytes) { return 
 
 int64_t drops::update_ram_bytes(const name owner, const int64_t bytes)
 {
-   modify_ram_bytes(get_self(), bytes, get_self());
-   return modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
+   const int64_t bytes_balance = modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
+   modify_ram_bytes(get_self(), bytes, get_self()); // deduct RAM bytes from contract
+   return bytes_balance;
 }
 
 int64_t drops::modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer)

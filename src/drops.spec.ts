@@ -289,6 +289,14 @@ describe(core_contract, () => {
         await expectToThrow(action, 'eosio_assert: Cannot generate drops for contract.')
     })
 
+    test('generate::error - not have enough RAM bytes.', async () => {
+        const action = contracts.core.actions
+            .generate([alice, false, 1000, '1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+            .send(alice)
+
+        await expectToThrow(action, 'eosio_assert_message: alice does not have enough RAM bytes.')
+    })
+
     test('generate 1K', async () => {
         const before = getBalance(bob)
         const data = 'cccccccccccccccccccccccccccccccc'
