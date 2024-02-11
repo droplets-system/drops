@@ -67,6 +67,9 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
 {
    require_auth(get_self());
    notify(owner);
+   if (to_notify) {
+      notify(to_notify);
+   }
 }
 
 [[eosio::action]] void drops::loggenerate(const name             owner,
@@ -79,6 +82,9 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
 {
    require_auth(get_self());
    notify(owner);
+   if (to_notify) {
+      notify(to_notify);
+   }
 }
 
 } // namespace dropssystem
