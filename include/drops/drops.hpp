@@ -237,6 +237,15 @@ public:
                                      optional<string>       memo,
                                      optional<name>         to_notify);
 
+   // @logging
+   [[eosio::action]] void loggenerate(const name             owner,
+                                      const vector<drop_row> drops,
+                                      const int64_t          generated,
+                                      const int64_t          bytes_used,
+                                      const int64_t          bytes_balance,
+                                      const string           data,
+                                      optional<name>         to_notify);
+
    // @static
    static bool is_enabled(const name code)
    {
@@ -262,6 +271,7 @@ public:
    using logrambytes_action = eosio::action_wrapper<"logrambytes"_n, &drops::logrambytes>;
    using logdrops_action    = eosio::action_wrapper<"logdrops"_n, &drops::logdrops>;
    using logdestroy_action  = eosio::action_wrapper<"logdestroy"_n, &drops::logdestroy>;
+   using loggenerate_action = eosio::action_wrapper<"loggenerate"_n, &drops::loggenerate>;
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
@@ -310,8 +320,9 @@ private:
    uint64_t set_sequence(const int64_t amount);
 
    // create and destroy
-   generate_return_value emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
-   drop_row              destroy_drop(const uint64_t drop_id, const name owner);
+   generate_return_value emplace_drops(
+      const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
+   drop_row destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
    void log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);

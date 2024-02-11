@@ -137,6 +137,14 @@ describe(core_contract, () => {
 
         // should not receive any EOS refunds on transfer
         expect(tokenAfter.value - tokenBefore.value).toBe(-10)
+
+        // logging
+        const logrambytes = DropsContract.Types.logrambytes.from(
+            blockchain.actionTraces[3].decodedData
+        )
+        expect(logrambytes.ram_bytes.toNumber()).toEqual(87550)
+        expect(logrambytes.before_ram_bytes.toNumber()).toEqual(0)
+        expect(logrambytes.bytes.toNumber()).toEqual(87550)
     })
 
     test('on_transfer::error - contract disabled', async () => {
@@ -186,14 +194,28 @@ describe(core_contract, () => {
         // should consume RAM bytes
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(-277)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1)
-        expect(
-            getDrop(343891094750660754n).equals({
-                seed: '343891094750660754',
-                owner: 'bob',
-                created: '2024-01-29T00:00:00.000',
-                bound: false,
-            })
-        ).toBeTrue()
+        const drop = {
+            seed: '343891094750660754',
+            owner: 'bob',
+            created: '2024-01-29T00:00:00.000',
+            bound: false,
+        }
+        expect(getDrop(343891094750660754n).equals(drop)).toBeTrue()
+
+        // logging drops
+        const logdrops = DropsContract.Types.logdrops.from(blockchain.actionTraces[4].decodedData)
+        expect(logdrops.amount.toNumber()).toEqual(1)
+        expect(logdrops.before_drops.toNumber()).toEqual(0)
+        expect(logdrops.drops.toNumber()).toEqual(1)
+
+        // logging generate
+        const loggenerate = DropsContract.Types.loggenerate.from(
+            blockchain.actionTraces[5].decodedData
+        )
+        expect(loggenerate.bytes_balance.toNumber()).toEqual(875235)
+        expect(loggenerate.bytes_used.toNumber()).toEqual(277)
+        expect(loggenerate.generated.toNumber()).toEqual(1)
+        expect(loggenerate.drops).toStrictEqual([DropsContract.Types.drop_row.from(drop)])
     })
 
     test('generate - bound=true', async () => {
@@ -205,19 +227,27 @@ describe(core_contract, () => {
         // should not consume any RAM bytes
         expect(after.ram_bytes.toNumber() - before.ram_bytes.toNumber()).toBe(0)
         expect(after.drops.toNumber() - before.drops.toNumber()).toBe(1)
-        expect(
-            getDrop(11725508947118797007n).equals({
-                seed: '11725508947118797007',
-                owner: 'bob',
-                created: '2024-01-29T00:00:00.000',
-                bound: true,
-            })
-        ).toBeTrue()
+        const drop = {
+            seed: '11725508947118797007',
+            owner: 'bob',
+            created: '2024-01-29T00:00:00.000',
+            bound: true,
+        }
+        expect(getDrop(11725508947118797007n).equals(drop)).toBeTrue()
 
         // seed should be deterministic
         const index = 0
         const sequence = 100
         expect(toSeed([index, sequence, data].join('')).toString()).toBe('3615493820451389612')
+
+        // logging generate
+        const loggenerate = DropsContract.Types.loggenerate.from(
+            blockchain.actionTraces[3].decodedData
+        )
+        expect(loggenerate.bytes_balance.toNumber()).toEqual(875235)
+        expect(loggenerate.bytes_used.toNumber()).toEqual(277)
+        expect(loggenerate.generated.toNumber()).toEqual(1)
+        expect(loggenerate.drops).toStrictEqual([DropsContract.Types.drop_row.from(drop)])
     })
 
     test('toSeed', () => {
@@ -240,16 +270,16 @@ describe(core_contract, () => {
         expect(after.drops.toNumber()).toBe(1)
     })
 
-    // test('generate::error - already exists', async () => {
-    //     const action = contracts.core.actions
-    //         .generate([bob, false, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
-    //         .send(bob)
+    test.skip('generate::error - already exists', async () => {
+        const action = contracts.core.actions
+            .generate([bob, false, 1, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'])
+            .send(bob)
 
-    //     await expectToThrow(
-    //         action,
-    //         'eosio_assert_message: Drop 10272988527514872302 already exists.'
-    //     )
-    // })
+        await expectToThrow(
+            action,
+            'eosio_assert_message: Drop 10272988527514872302 already exists.'
+        )
+    })
 
     test('generate::error - contract cannot generate', async () => {
         const action = contracts.core.actions

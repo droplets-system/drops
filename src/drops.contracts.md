@@ -144,3 +144,13 @@ title: logdestroy
 summary: logdestroy
 icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
 ---
+
+
+<h1 class="contract">loggenerate</h1>
+
+---
+spec_version: "0.2.0"
+title: loggenerate
+summary: loggenerate
+icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
+---

@@ -64,15 +64,13 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    check_is_enabled(get_self());
    check(owner != get_self(), "Cannot generate drops for contract.");
    open_balance(owner, owner);
-   const generate_return_value return_value = emplace_drops(owner, bound, amount, data);
-   add_drops(owner, amount);
-   return return_value;
+   return emplace_drops(owner, bound, amount, data, to_notify);
 }
 
-drops::generate_return_value
-drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data)
+drops::generate_return_value drops::emplace_drops(
+   const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
 {
-   drop_table drops(get_self(), get_self().value);
+   drop_table _drops(get_self(), get_self().value);
 
    // Ensure amount is a positive value
    check(amount > 0, "The amount of drops to generate must be a positive value.");
@@ -86,37 +84,51 @@ drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, 
    const uint64_t sequence = get_sequence();
 
    // Iterate over all drops to be created and insert them into the drops table
+   vector<drop_row> drops;
    for (int i = 0; i < amount; i++) {
       const uint64_t seed = hash_data(to_string(i) + to_string(sequence + i) + data);
 
       // Ensure first drop does not already exist
       // NOTE: subsequent drops are not checked for performance reasons
       if (i == 0) {
-         check(drops.find(seed) == drops.end(), "Drop " + to_string(seed) + " already exists.");
+         check(_drops.find(seed) == _drops.end(), "Drop " + to_string(seed) + " already exists.");
       }
 
       // Determine the payer with bound = owner, unbound = contract
       const name ram_payer = bound ? owner : get_self();
-      drops.emplace(ram_payer, [&](auto& row) {
+      _drops.emplace(ram_payer, [&](auto& row) {
          row.seed    = seed;
          row.owner   = owner;
          row.bound   = bound;
          row.created = current_block_time();
+
+         // Add the drop to the list of drops to be used in the logging action
+         drops.push_back(row);
       });
    }
 
    // Set the global sequence to the next value
    set_sequence(amount);
 
+   // Current RAM bytes balance
+   int64_t       bytes_balance = get_ram_bytes(owner);
+   const int64_t bytes_used    = amount * get_bytes_per_drop();
+
    // generating unbond drops consumes contract RAM bytes to owner
-   const int64_t bytes = amount * get_bytes_per_drop();
    if (bound == false) {
-      const int64_t newBalance = reduce_ram_bytes(owner, bytes);
-      return {bytes, newBalance};
+      bytes_balance = reduce_ram_bytes(owner, bytes_used);
    }
-   // bound drops do not consume contract RAM bytes
-   auto balance = get_ram_bytes(owner);
-   return {bytes, balance};
+   // else: bound drops do not consume contract RAM bytes
+
+   // update owner's drop balance
+   add_drops(owner, amount);
+
+   // logging
+   drops::loggenerate_action loggenerate_act{get_self(), {get_self(), "active"_n}};
+   loggenerate_act.send(owner, drops, drops.size(), bytes_used, bytes_balance, data, to_notify);
+
+   // action return value
+   return {bytes_used, bytes_balance};
 }
 
 uint64_t drops::hash_data(const string data)
@@ -242,6 +254,8 @@ void drops::notify(const optional<name> to_notify)
 {
    if (to_notify) {
       check(is_account(*to_notify), ERROR_ACCOUNT_NOT_EXISTS);
+      if (*to_notify == get_self())
+         return; // prevent notify if the contract is the receiver
       require_recipient(*to_notify);
    }
 }
@@ -280,7 +294,7 @@ void drops::notify(const optional<name> to_notify)
 
    // logging
    drops::logdestroy_action logdestroy_act{get_self(), {get_self(), "active"_n}};
-   logdestroy_act.send(owner, drops, drops_ids.size(), unbound_destroyed, bytes_reclaimed, memo, to_notify);
+   logdestroy_act.send(owner, drops, drops.size(), unbound_destroyed, bytes_reclaimed, memo, to_notify);
 
    // action return value
    return {unbound_destroyed, bytes_reclaimed};
