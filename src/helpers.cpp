@@ -42,8 +42,7 @@ void drops::log_ram_bytes(const name    owner,
 void drops::logrambytes(const name owner, const int64_t bytes, const int64_t before_ram_bytes, const int64_t ram_bytes)
 {
    require_auth(get_self());
-   if (owner != get_self())
-      notify(owner);
+   notify(owner);
 }
 
 void drops::log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops)
@@ -55,9 +54,7 @@ void drops::log_drops(const name owner, const int64_t amount, const int64_t befo
 void drops::logdrops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops)
 {
    require_auth(get_self());
-   if (owner != get_self()) {
-      notify(owner);
-   }
+   notify(owner);
 }
 
 [[eosio::action]] void drops::logdestroy(const name             owner,
@@ -69,12 +66,19 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
                                          optional<name>         to_notify)
 {
    require_auth(get_self());
-   if (owner != get_self()) {
-      notify(owner);
-   }
-   if (to_notify) {
-      notify(to_notify);
-   }
+   notify(owner);
+}
+
+[[eosio::action]] void drops::loggenerate(const name             owner,
+                                          const vector<drop_row> drops,
+                                          const int64_t          generated,
+                                          const int64_t          bytes_used,
+                                          const int64_t          bytes_balance,
+                                          const string           data,
+                                          optional<name>         to_notify)
+{
+   require_auth(get_self());
+   notify(owner);
 }
 
 } // namespace dropssystem
