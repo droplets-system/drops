@@ -60,7 +60,6 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
 {
    require_auth(owner);
-   notify(to_notify);
    check_is_enabled(get_self());
    check(owner != get_self(), "Cannot generate drops for contract.");
    open_balance(owner, owner);
@@ -267,7 +266,6 @@ void drops::notify(const optional<name> to_notify)
                                                              const optional<name>   to_notify)
 {
    require_auth(owner);
-   notify(to_notify);
 
    check_is_enabled(get_self());
    const int64_t amount = drops_ids.size();
