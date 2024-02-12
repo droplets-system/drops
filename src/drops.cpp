@@ -60,19 +60,16 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
    const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
 {
    require_auth(owner);
-   notify(to_notify);
    check_is_enabled(get_self());
    check(owner != get_self(), "Cannot generate drops for contract.");
    open_balance(owner, owner);
-   const generate_return_value return_value = emplace_drops(owner, bound, amount, data);
-   add_drops(owner, amount);
-   return return_value;
+   return emplace_drops(owner, bound, amount, data, to_notify);
 }
 
-drops::generate_return_value
-drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data)
+drops::generate_return_value drops::emplace_drops(
+   const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
 {
-   drop_table drops(get_self(), get_self().value);
+   drop_table _drops(get_self(), get_self().value);
 
    // Ensure amount is a positive value
    check(amount > 0, "The amount of drops to generate must be a positive value.");
@@ -80,35 +77,57 @@ drops::emplace_drops(const name owner, const bool bound, const uint32_t amount, 
    // Ensure string length
    check(data.length() >= 32, "Drop data must be at least 32 characters in length.");
 
+   // the sequence is used as a salt to add an extra layer of complexity and randomness to the hashing process.
+   // the sequence is incremented each time a new Drop is generated to ensure that each hash is unique, even if the
+   // input data is the same.
+   const uint64_t sequence = get_sequence();
+
    // Iterate over all drops to be created and insert them into the drops table
+   vector<drop_row> drops;
    for (int i = 0; i < amount; i++) {
-      const uint64_t seed = hash_data(to_string(i) + data);
+      const uint64_t seed = hash_data(to_string(i) + to_string(sequence + i) + data);
 
       // Ensure first drop does not already exist
       // NOTE: subsequent drops are not checked for performance reasons
       if (i == 0) {
-         check(drops.find(seed) == drops.end(), "Drop " + to_string(seed) + " already exists.");
+         check(_drops.find(seed) == _drops.end(), "Drop " + to_string(seed) + " already exists.");
       }
 
       // Determine the payer with bound = owner, unbound = contract
       const name ram_payer = bound ? owner : get_self();
-      drops.emplace(ram_payer, [&](auto& row) {
+      _drops.emplace(ram_payer, [&](auto& row) {
          row.seed    = seed;
          row.owner   = owner;
          row.bound   = bound;
          row.created = current_block_time();
+
+         // Add the drop to the list of drops to be used in the logging action
+         drops.push_back(row);
       });
    }
 
+   // Set the global sequence to the next value
+   set_sequence(amount);
+
+   // Current RAM bytes balance
+   int64_t       bytes_balance = get_ram_bytes(owner);
+   const int64_t bytes_used    = amount * get_bytes_per_drop();
+
    // generating unbond drops consumes contract RAM bytes to owner
-   const int64_t bytes = amount * get_bytes_per_drop();
    if (bound == false) {
-      const int64_t newBalance = reduce_ram_bytes(owner, bytes);
-      return {bytes, newBalance};
+      bytes_balance = reduce_ram_bytes(owner, bytes_used);
    }
-   // bound drops do not consume contract RAM bytes
-   auto balance = get_ram_bytes(owner);
-   return {bytes, balance};
+   // else: bound drops do not consume contract RAM bytes
+
+   // update owner's drop balance
+   add_drops(owner, amount);
+
+   // logging
+   drops::loggenerate_action loggenerate_act{get_self(), {get_self(), "active"_n}};
+   loggenerate_act.send(owner, drops, drops.size(), bytes_used, bytes_balance, data, to_notify);
+
+   // action return value
+   return {bytes_used, bytes_balance};
 }
 
 uint64_t drops::hash_data(const string data)
@@ -234,6 +253,8 @@ void drops::notify(const optional<name> to_notify)
 {
    if (to_notify) {
       check(is_account(*to_notify), ERROR_ACCOUNT_NOT_EXISTS);
+      if (*to_notify == get_self())
+         return; // prevent notify if the contract is the receiver
       require_recipient(*to_notify);
    }
 }
@@ -245,7 +266,6 @@ void drops::notify(const optional<name> to_notify)
                                                              const optional<name>   to_notify)
 {
    require_auth(owner);
-   notify(to_notify);
 
    check_is_enabled(get_self());
    const int64_t amount = drops_ids.size();
@@ -253,13 +273,15 @@ void drops::notify(const optional<name> to_notify)
    reduce_drops(owner, amount);
 
    // The number of bound drops that were destroyed
-   int64_t unbound_destroyed = 0;
+   int64_t          unbound_destroyed = 0;
+   vector<drop_row> drops;
    for (const uint64_t drop_id : drops_ids) {
       // Count the number of "bound=false" drops destroyed
-      const bool bound = destroy_drop(drop_id, owner);
-      if (bound == false) {
+      const drop_row drop = destroy_drop(drop_id, owner);
+      if (drop.bound == false) {
          unbound_destroyed++;
       }
+      drops.push_back(drop);
    }
 
    // Calculate how much of their own RAM the account reclaimed
@@ -267,10 +289,16 @@ void drops::notify(const optional<name> to_notify)
    if (bytes_reclaimed > 0) {
       add_ram_bytes(owner, bytes_reclaimed);
    }
+
+   // logging
+   drops::logdestroy_action logdestroy_act{get_self(), {get_self(), "active"_n}};
+   logdestroy_act.send(owner, drops, drops.size(), unbound_destroyed, bytes_reclaimed, memo, to_notify);
+
+   // action return value
    return {unbound_destroyed, bytes_reclaimed};
 }
 
-bool drops::destroy_drop(const uint64_t drop_id, const name owner)
+drops::drop_row drops::destroy_drop(const uint64_t drop_id, const name owner)
 {
    drops::drop_table drops(get_self(), get_self().value);
 
@@ -282,7 +310,7 @@ bool drops::destroy_drop(const uint64_t drop_id, const name owner)
    drops.erase(drop);
 
    // return if the drop was bound or not
-   return bound;
+   return drop;
 }
 
 // @user
@@ -348,8 +376,9 @@ int64_t drops::reduce_ram_bytes(const name owner, const int64_t bytes) { return 
 
 int64_t drops::update_ram_bytes(const name owner, const int64_t bytes)
 {
-   modify_ram_bytes(get_self(), bytes, get_self());
-   return modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
+   const int64_t bytes_balance = modify_ram_bytes(owner, bytes, auth_ram_payer(owner));
+   modify_ram_bytes(get_self(), bytes, get_self()); // deduct RAM bytes from contract
+   return bytes_balance;
 }
 
 int64_t drops::modify_ram_bytes(const name owner, const int64_t bytes, const name ram_payer)
@@ -454,6 +483,21 @@ int64_t drops::get_bytes_per_drop()
 {
    drops::state_table _state(get_self(), get_self().value);
    return _state.get_or_default().bytes_per_drop;
+}
+
+uint64_t drops::get_sequence()
+{
+   drops::state_table _state(get_self(), get_self().value);
+   return _state.get_or_default().sequence;
+}
+
+uint64_t drops::set_sequence(const int64_t amount)
+{
+   drops::state_table _state(get_self(), get_self().value);
+   auto               state = _state.get_or_default();
+   state.sequence += amount;
+   _state.set(state, get_self());
+   return state.sequence;
 }
 
 } // namespace dropssystem

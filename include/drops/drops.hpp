@@ -78,6 +78,8 @@ public:
     *
     * - `{block_timestamp} genesis` - genesis time when the contract was created
     * - `{int64_t} bytes_per_drop` - amount of RAM bytes required per minting drop
+    * - `{uint64_t} sequence` - sequence is used as a salt to add an extra layer of complexity and randomness to the
+    * hashing process.
     * - `{bool} enabled` - whether the contract is enabled
     *
     * ### example
@@ -86,6 +88,7 @@ public:
     * {
     *   "genesis": "2024-01-29T00:00:00",
     *   "bytes_per_drop": 277,
+    *   "sequence": 0,
     *   "enabled": true
     * }
     * ```
@@ -94,6 +97,7 @@ public:
    {
       block_timestamp genesis        = current_block_time();
       int64_t         bytes_per_drop = 277; // 133 bytes primary row + 144 bytes secondary row
+      uint64_t        sequence       = 0;   // auto-incremented on each drop generation
       bool            enabled        = true;
    };
 
@@ -224,6 +228,24 @@ public:
    [[eosio::action]] void
    logdrops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
 
+   // @logging
+   [[eosio::action]] void logdestroy(const name             owner,
+                                     const vector<drop_row> drops,
+                                     const int64_t          destroyed,
+                                     const int64_t          unbound_destroyed,
+                                     const int64_t          bytes_reclaimed,
+                                     optional<string>       memo,
+                                     optional<name>         to_notify);
+
+   // @logging
+   [[eosio::action]] void loggenerate(const name             owner,
+                                      const vector<drop_row> drops,
+                                      const int64_t          generated,
+                                      const int64_t          bytes_used,
+                                      const int64_t          bytes_balance,
+                                      const string           data,
+                                      optional<name>         to_notify);
+
    // @static
    static bool is_enabled(const name code)
    {
@@ -248,6 +270,8 @@ public:
 
    using logrambytes_action = eosio::action_wrapper<"logrambytes"_n, &drops::logrambytes>;
    using logdrops_action    = eosio::action_wrapper<"logdrops"_n, &drops::logdrops>;
+   using logdestroy_action  = eosio::action_wrapper<"logdestroy"_n, &drops::logdestroy>;
+   using loggenerate_action = eosio::action_wrapper<"loggenerate"_n, &drops::loggenerate>;
 
 // DEBUG (used to help testing)
 #ifdef DEBUG
@@ -291,9 +315,14 @@ private:
    bool open_balance(const name owner, const name ram_payer);
    name auth_ram_payer(const name owner);
 
+   // sequence
+   uint64_t get_sequence();
+   uint64_t set_sequence(const int64_t amount);
+
    // create and destroy
-   generate_return_value emplace_drops(const name owner, const bool bound, const uint32_t amount, const string data);
-   bool                  destroy_drop(const uint64_t drop_id, const name owner);
+   generate_return_value emplace_drops(
+      const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
+   drop_row destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
    void log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
