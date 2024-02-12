@@ -17,7 +17,7 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 {
    // ignore RAM sales
    // ignore transfers not sent to this contract
-   if (from == "eosio.ram"_n || to != get_self()) {
+   if (from == "eosio.ram"_n || from == "eosio.stake"_n || to != get_self()) {
       return 0;
    }
    // ignore transfers sent from this contract to purchase RAM
