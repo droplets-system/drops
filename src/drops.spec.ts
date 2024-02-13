@@ -212,7 +212,7 @@ describe(core_contract, () => {
         const loggenerate = DropsContract.Types.loggenerate.from(
             blockchain.actionTraces[5].decodedData
         )
-        expect(loggenerate.bytes_balance.toNumber()).toEqual(875235)
+        expect(loggenerate.bytes_balance.toNumber()).toEqual(875223)
         expect(loggenerate.bytes_used.toNumber()).toEqual(277)
         expect(loggenerate.generated.toNumber()).toEqual(1)
         expect(loggenerate.drops).toStrictEqual([DropsContract.Types.drop_row.from(drop)])
@@ -244,7 +244,7 @@ describe(core_contract, () => {
         const loggenerate = DropsContract.Types.loggenerate.from(
             blockchain.actionTraces[3].decodedData
         )
-        expect(loggenerate.bytes_balance.toNumber()).toEqual(875235)
+        expect(loggenerate.bytes_balance.toNumber()).toEqual(875223)
         expect(loggenerate.bytes_used.toNumber()).toEqual(277)
         expect(loggenerate.generated.toNumber()).toEqual(1)
         expect(loggenerate.drops).toStrictEqual([DropsContract.Types.drop_row.from(drop)])
