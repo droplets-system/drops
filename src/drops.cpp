@@ -124,7 +124,8 @@ drops::generate_return_value drops::emplace_drops(
 
    // logging
    drops::loggenerate_action loggenerate_act{get_self(), {get_self(), "active"_n}};
-   loggenerate_act.send(owner, drops, drops.size(), bytes_used, bytes_balance, data, to_notify);
+   loggenerate_act.send(owner, to_notify ? drops : vector<drop_row>(), drops.size(), bytes_used, bytes_balance, data,
+                        to_notify);
 
    // action return value
    return {bytes_used, bytes_balance};
@@ -292,7 +293,8 @@ void drops::notify(const optional<name> to_notify)
 
    // logging
    drops::logdestroy_action logdestroy_act{get_self(), {get_self(), "active"_n}};
-   logdestroy_act.send(owner, drops, drops.size(), unbound_destroyed, bytes_reclaimed, memo, to_notify);
+   logdestroy_act.send(owner, to_notify ? drops : vector<drop_row>(), drops.size(), unbound_destroyed, bytes_reclaimed,
+                       memo, to_notify);
 
    // action return value
    return {unbound_destroyed, bytes_reclaimed};
