@@ -188,7 +188,7 @@ describe(core_contract, () => {
 
         const data = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
         const before = getBalance(bob)
-        await contracts.core.actions.generate([bob, false, 1, data]).send(bob)
+        await contracts.core.actions.generate([bob, false, 1, data, bob]).send(bob)
         const after = getBalance(bob)
 
         // should consume RAM bytes
@@ -221,7 +221,7 @@ describe(core_contract, () => {
     test('generate - bound=true', async () => {
         const data = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
         const before = getBalance(bob)
-        await contracts.core.actions.generate([bob, true, 1, data]).send(bob)
+        await contracts.core.actions.generate([bob, true, 1, data, bob]).send(bob)
         const after = getBalance(bob)
 
         // should not consume any RAM bytes
@@ -321,7 +321,7 @@ describe(core_contract, () => {
         await contracts.core.actions.generate([alice, false, 10, data]).send(alice)
         const before = getBalance(alice)
         await contracts.core.actions
-            .destroy([alice, ['13991429617541607035', '16719869299757338970'], 'memo'])
+            .destroy([alice, ['13991429617541607035', '16719869299757338970'], 'memo', alice])
             .send(alice)
         const after = getBalance(alice)
 
