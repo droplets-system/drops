@@ -59,7 +59,7 @@ int64_t bytes_cost_with_fee(const asset quantity)
    auto          itr         = _rammarket.find(system_contract::ramcore_symbol.raw());
    const int64_t ram_reserve = itr->base.balance.amount;
    const int64_t eos_reserve = itr->quote.balance.amount;
-   const int64_t cost        = get_bancor_input(eos_reserve, ram_reserve, quantity_after_fee.amount);
+   const int64_t cost        = get_bancor_output(eos_reserve, ram_reserve, quantity_after_fee.amount);
    return cost;
 }
 
