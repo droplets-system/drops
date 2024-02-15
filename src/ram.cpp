@@ -76,37 +76,9 @@ asset ram_cost(uint32_t bytes, symbol core_symbol)
 
 asset ram_cost_with_fee(uint32_t bytes, symbol core_symbol)
 {
-   const asset   cost          = ram_cost(bytes, core_symbol);
-   const int64_t cost_plus_fee = cost.amount / double(0.995);
-   return asset{cost_plus_fee, core_symbol};
-}
-
-// asset direct_convert(const asset& from, const symbol& to)
-asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol)
-{
-   asset from = asset{bytes, system_contract::ram_symbol};
-
-   symbol    to             = core_symbol;
-   name      system_account = "eosio"_n;
-   rammarket _rammarket(system_account, system_account.value);
-   auto      itr = _rammarket.find(system_contract::ramcore_symbol.raw());
-
-   const auto& sell_symbol  = from.symbol;
-   const auto& base_symbol  = itr->base.balance.symbol;
-   const auto& quote_symbol = itr->quote.balance.symbol;
-   check(sell_symbol != to, "cannot convert to the same symbol");
-
-   asset out(0, to);
-   if (sell_symbol == base_symbol && to == quote_symbol) {
-      out.amount = get_bancor_output(itr->base.balance.amount, itr->quote.balance.amount, from.amount);
-   } else if (sell_symbol == quote_symbol && to == base_symbol) {
-      out.amount = get_bancor_output(itr->quote.balance.amount, itr->base.balance.amount, from.amount);
-   } else {
-      check(false, "invalid conversion");
-   }
-
-   out -= get_fee(out);
-   return out;
+   const asset cost = ram_cost(bytes, core_symbol);
+   const asset fee  = get_fee(cost);
+   return cost - fee;
 }
 
 } // namespace eosiosystem
