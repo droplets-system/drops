@@ -217,6 +217,9 @@ public:
     */
    [[eosio::action]] int64_t claim(const name owner);
 
+   [[eosio::action, eosio::read_only]] asset   ramcost(const int64_t bytes);
+   [[eosio::action, eosio::read_only]] int64_t bytescost(const asset quantity);
+
    // @admin
    [[eosio::action]] void enable(bool enabled);
 

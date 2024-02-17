@@ -2,6 +2,7 @@
 
 #include "helpers.cpp"
 #include "ram.cpp"
+#include "read_only.cpp"
 #include "utils.cpp"
 
 // DEBUG (used to help testing)
