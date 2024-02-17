@@ -363,7 +363,7 @@ bool drops::open_balance(const name owner, const name ram_payer)
          // else, sell RAM bytes and transfer EOS to owner (0.5% fee to system contract)
       } else {
          sell_ram_bytes(ram_bytes);
-         const asset quantity = eosiosystem::ram_cost_with_fee(ram_bytes, EOS);
+         const asset quantity = eosiosystem::ram_proceeds_minus_fee(ram_bytes, EOS);
          transfer_tokens(owner, quantity, MEMO_RAM_SOLD_TRANSFER);
       }
       return ram_bytes;

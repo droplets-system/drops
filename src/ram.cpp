@@ -78,6 +78,24 @@ asset ram_cost_with_fee(uint32_t bytes, symbol core_symbol)
 {
    const asset cost = ram_cost(bytes, core_symbol);
    const asset fee  = get_fee(cost);
+   return cost + fee;
+}
+
+asset ram_proceeds(uint32_t bytes, symbol core_symbol)
+{
+   name          system_account = "eosio"_n;
+   rammarket     _rammarket(system_account, system_account.value);
+   auto          itr         = _rammarket.find(system_contract::ramcore_symbol.raw());
+   const int64_t ram_reserve = itr->base.balance.amount;
+   const int64_t eos_reserve = itr->quote.balance.amount;
+   const int64_t cost        = get_bancor_output(ram_reserve, eos_reserve, bytes);
+   return asset{cost, core_symbol};
+}
+
+asset ram_proceeds_minus_fee(uint32_t bytes, symbol core_symbol)
+{
+   const asset cost = ram_proceeds(bytes, core_symbol);
+   const asset fee  = get_fee(cost);
    return cost - fee;
 }
 
