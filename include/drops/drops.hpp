@@ -161,19 +161,19 @@ public:
 
    // @user
    [[eosio::action]] void
-   transfer(const name from, const name to, const vector<uint64_t> drops_ids, const optional<string> memo);
+   transfer(const name from, const name to, const vector<uint64_t> droplet_ids, const optional<string> memo);
 
    // @user
    [[eosio::action]] destroy_return_value destroy(const name             owner,
-                                                  const vector<uint64_t> drops_ids,
+                                                  const vector<uint64_t> droplet_ids,
                                                   const optional<string> memo,
                                                   const optional<name>   to_notify);
 
    // @user
-   [[eosio::action]] int64_t bind(const name owner, const vector<uint64_t> drops_ids);
+   [[eosio::action]] int64_t bind(const name owner, const vector<uint64_t> droplet_ids);
 
    // @user
-   [[eosio::action]] int64_t unbind(const name owner, const vector<uint64_t> drops_ids);
+   [[eosio::action]] int64_t unbind(const name owner, const vector<uint64_t> droplet_ids);
 
    /**
     * ## ACTION `open`
