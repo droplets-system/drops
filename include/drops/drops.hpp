@@ -156,8 +156,12 @@ public:
    on_transfer(const name from, const name to, const asset quantity, const string memo);
 
    // @user
-   [[eosio::action]] generate_return_value generate(
-      const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
+   [[eosio::action]] generate_return_value generate(const name             owner,
+                                                    const bool             bound,
+                                                    const uint32_t         amount,
+                                                    const string           data,
+                                                    const optional<name>   to_notify,
+                                                    const optional<string> memo);
 
    // @user
    [[eosio::action]] void
@@ -237,8 +241,8 @@ public:
                                      const int64_t          destroyed,
                                      const int64_t          unbound_destroyed,
                                      const int64_t          bytes_reclaimed,
-                                     optional<string>       memo,
-                                     optional<name>         to_notify);
+                                     const optional<string> memo,
+                                     const optional<name>   to_notify);
 
    // @logging
    [[eosio::action]] void loggenerate(const name             owner,
@@ -247,7 +251,8 @@ public:
                                       const int64_t          bytes_used,
                                       const int64_t          bytes_balance,
                                       const string           data,
-                                      optional<name>         to_notify);
+                                      const optional<name>   to_notify,
+                                      const optional<string> memo);
 
    // @static
    static bool is_enabled(const name code)
@@ -323,9 +328,13 @@ private:
    uint64_t set_sequence(const int64_t amount);
 
    // create and destroy
-   generate_return_value emplace_drops(
-      const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
-   drop_row destroy_drop(const uint64_t drop_id, const name owner);
+   generate_return_value emplace_drops(const name             owner,
+                                       const bool             bound,
+                                       const uint32_t         amount,
+                                       const string           data,
+                                       const optional<name>   to_notify,
+                                       const optional<string> memo);
+   drop_row              destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
    void log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);

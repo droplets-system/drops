@@ -57,18 +57,26 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 }
 
 // @user
-[[eosio::action]] drops::generate_return_value drops::generate(
-   const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
+[[eosio::action]] drops::generate_return_value drops::generate(const name             owner,
+                                                               const bool             bound,
+                                                               const uint32_t         amount,
+                                                               const string           data,
+                                                               const optional<name>   to_notify,
+                                                               const optional<string> memo)
 {
    require_auth(owner);
    check_is_enabled(get_self());
    check(owner != get_self(), "Cannot generate drops for contract.");
    open_balance(owner, owner);
-   return emplace_drops(owner, bound, amount, data, to_notify);
+   return emplace_drops(owner, bound, amount, data, to_notify, memo);
 }
 
-drops::generate_return_value drops::emplace_drops(
-   const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
+drops::generate_return_value drops::emplace_drops(const name             owner,
+                                                  const bool             bound,
+                                                  const uint32_t         amount,
+                                                  const string           data,
+                                                  const optional<name>   to_notify,
+                                                  const optional<string> memo)
 {
    drop_table _drops(get_self(), get_self().value);
 
@@ -126,7 +134,7 @@ drops::generate_return_value drops::emplace_drops(
    // logging
    drops::loggenerate_action loggenerate_act{get_self(), {get_self(), "active"_n}};
    loggenerate_act.send(owner, to_notify ? drops : vector<drop_row>(), drops.size(), bytes_used, bytes_balance, data,
-                        to_notify);
+                        to_notify, memo);
 
    // action return value
    return {bytes_used, bytes_balance};
