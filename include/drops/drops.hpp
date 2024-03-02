@@ -31,7 +31,7 @@ static const string MEMO_RAM_SOLD_TRANSFER = "Claiming sold RAM bytes.";
 static const bool FLAG_FORCE_RECEIVER_TO_BE_SENDER = true;
 
 // not available until system contract supports `ramtransfer`
-static const bool FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM = false;
+static const bool FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM = true;
 
 uint128_t combine_ids(const uint64_t& v1, const uint64_t& v2) { return (uint128_t{v1} << 64) | v2; }
 
