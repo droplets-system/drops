@@ -31,7 +31,7 @@ static const string MEMO_RAM_SOLD_TRANSFER = "Claiming sold RAM bytes.";
 static const bool FLAG_FORCE_RECEIVER_TO_BE_SENDER = true;
 
 // not available until system contract supports `ramtransfer`
-static const bool FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM = false;
+static const bool FLAG_ENABLE_RAM_TRANSFER_ON_CLAIM = true;
 
 uint128_t combine_ids(const uint64_t& v1, const uint64_t& v2) { return (uint128_t{v1} << 64) | v2; }
 
@@ -156,24 +156,28 @@ public:
    on_transfer(const name from, const name to, const asset quantity, const string memo);
 
    // @user
-   [[eosio::action]] generate_return_value generate(
-      const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
+   [[eosio::action]] generate_return_value generate(const name             owner,
+                                                    const bool             bound,
+                                                    const uint32_t         amount,
+                                                    const string           data,
+                                                    const optional<name>   to_notify,
+                                                    const optional<string> memo);
 
    // @user
    [[eosio::action]] void
-   transfer(const name from, const name to, const vector<uint64_t> drops_ids, const optional<string> memo);
+   transfer(const name from, const name to, const vector<uint64_t> droplet_ids, const optional<string> memo);
 
    // @user
    [[eosio::action]] destroy_return_value destroy(const name             owner,
-                                                  const vector<uint64_t> drops_ids,
+                                                  const vector<uint64_t> droplet_ids,
                                                   const optional<string> memo,
                                                   const optional<name>   to_notify);
 
    // @user
-   [[eosio::action]] int64_t bind(const name owner, const vector<uint64_t> drops_ids);
+   [[eosio::action]] int64_t bind(const name owner, const vector<uint64_t> droplet_ids);
 
    // @user
-   [[eosio::action]] int64_t unbind(const name owner, const vector<uint64_t> drops_ids);
+   [[eosio::action]] int64_t unbind(const name owner, const vector<uint64_t> droplet_ids);
 
    /**
     * ## ACTION `open`
@@ -237,8 +241,8 @@ public:
                                      const int64_t          destroyed,
                                      const int64_t          unbound_destroyed,
                                      const int64_t          bytes_reclaimed,
-                                     optional<string>       memo,
-                                     optional<name>         to_notify);
+                                     const optional<string> memo,
+                                     const optional<name>   to_notify);
 
    // @logging
    [[eosio::action]] void loggenerate(const name             owner,
@@ -247,7 +251,8 @@ public:
                                       const int64_t          bytes_used,
                                       const int64_t          bytes_balance,
                                       const string           data,
-                                      optional<name>         to_notify);
+                                      const optional<name>   to_notify,
+                                      const optional<string> memo);
 
    // @static
    static bool is_enabled(const name code)
@@ -323,9 +328,13 @@ private:
    uint64_t set_sequence(const int64_t amount);
 
    // create and destroy
-   generate_return_value emplace_drops(
-      const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify);
-   drop_row destroy_drop(const uint64_t drop_id, const name owner);
+   generate_return_value emplace_drops(const name             owner,
+                                       const bool             bound,
+                                       const uint32_t         amount,
+                                       const string           data,
+                                       const optional<name>   to_notify,
+                                       const optional<string> memo);
+   drop_row              destroy_drop(const uint64_t drop_id, const name owner);
 
    // logging
    void log_drops(const name owner, const int64_t amount, const int64_t before_drops, const int64_t drops);
