@@ -156,6 +156,10 @@ public:
    on_transfer(const name from, const name to, const asset quantity, const string memo);
 
    // @user
+   [[eosio::on_notify("*::ramtransfer")]] void
+   on_ramtransfer(const name from, const name to, const int64_t bytes, const string memo);
+
+   // @user
    [[eosio::action]] generate_return_value generate(const name             owner,
                                                     const bool             bound,
                                                     const uint32_t         amount,
