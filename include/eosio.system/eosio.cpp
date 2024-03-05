@@ -11,6 +11,8 @@ class [[eosio::contract("eosio")]] system_contract : public contract
 public:
     using contract::contract;
 
+    static constexpr symbol ramcore_symbol = symbol(symbol_code("RAMCORE"), 4);
+
     /**
      * Buy ram action, increases receiver's ram quota based upon current price and quantity of
      * tokens provided. An inline transfer from receiver to system contract of
@@ -23,7 +25,8 @@ public:
     [[eosio::action]]
     void buyram( const name& payer, const name& receiver, const asset& quant )
     {
-        print("noop");
+        const int64_t bytes = bytes_cost_with_fee(quant);
+        add_ram(receiver, bytes);
     }
 
     /**
@@ -37,7 +40,7 @@ public:
     [[eosio::action]]
     void buyrambytes( const name& payer, const name& receiver, uint32_t bytes )
     {
-        print("noop");
+        add_ram(receiver, bytes);
     }
 
     /**
@@ -50,7 +53,7 @@ public:
     [[eosio::action]]
     void sellram( const name& account, int64_t bytes )
     {
-        print("noop");
+        add_ram(account, -bytes);
     }
 
     /**
@@ -64,7 +67,8 @@ public:
     [[eosio::action]]
     void ramtransfer( const name& from, const name& to, int64_t bytes, const std::string& memo )
     {
-        print("noop");
+        add_ram(from, -bytes);
+        add_ram(to, bytes);
     }
 
     [[eosio::action]]
@@ -103,4 +107,73 @@ public:
     };
 
     typedef eosio::multi_index< "rammarket"_n, exchange_state > rammarket;
+
+    struct [[eosio::table, eosio::contract("eosio.system")]] user_resources {
+        name          owner;
+        asset         net_weight;
+        asset         cpu_weight;
+        int64_t       ram_bytes = 0;
+
+        bool is_empty()const { return net_weight.amount == 0 && cpu_weight.amount == 0 && ram_bytes == 0; }
+        uint64_t primary_key()const { return owner.value; }
+    };
+
+    typedef eosio::multi_index< "userres"_n, user_resources >      user_resources_table;
+
+    int64_t add_ram( const name& owner, int64_t bytes ) {
+        require_recipient( owner );
+        user_resources_table _userres( get_self(), owner.value );
+        auto res_itr = _userres.find( owner.value );
+
+        if ( res_itr == _userres.end() ) {
+            _userres.emplace( get_self(), [&]( auto& res ) {
+                res.owner = owner;
+                res.ram_bytes = bytes;
+                res.net_weight = asset(0, symbol("EOS", 4));
+                res.cpu_weight = asset(0, symbol("EOS", 4));
+            });
+            return bytes;
+        } else {
+            _userres.modify( res_itr, same_payer, [&]( auto& res ) {
+                res.ram_bytes += bytes;
+            });
+        }
+        return res_itr->ram_bytes;
+    }
+
+    int64_t get_bancor_output(int64_t inp_reserve, int64_t out_reserve, int64_t inp)
+    {
+        const double ib = inp_reserve;
+        const double ob = out_reserve;
+        const double in = inp;
+
+        int64_t out = int64_t((in * ob) / (ib + in));
+
+        if (out < 0)
+            out = 0;
+
+        return out;
+    }
+
+    int64_t bytes_cost_with_fee(const asset quantity)
+    {
+        name      system_account = "eosio"_n;
+        rammarket _rammarket(system_account, system_account.value);
+
+        const asset fee                = get_fee(quantity);
+        const asset quantity_after_fee = quantity - fee;
+
+        auto          itr         = _rammarket.find(system_contract::ramcore_symbol.raw());
+        const int64_t ram_reserve = itr->base.balance.amount;
+        const int64_t eos_reserve = itr->quote.balance.amount;
+        const int64_t cost        = get_bancor_output(eos_reserve, ram_reserve, quantity_after_fee.amount);
+        return cost;
+    }
+
+    asset get_fee(const asset quantity)
+    {
+        asset fee  = quantity;
+        fee.amount = (fee.amount + 199) / 200; /// .5% fee (round up)
+        return fee;
+    }
 };
