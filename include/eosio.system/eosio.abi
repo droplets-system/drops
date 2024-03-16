@@ -111,6 +111,28 @@
                     "type": "int64"
                 }
             ]
+        },
+        {
+            "name": "user_resources",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "net_weight",
+                    "type": "asset"
+                },
+                {
+                    "name": "cpu_weight",
+                    "type": "asset"
+                },
+                {
+                    "name": "ram_bytes",
+                    "type": "int64"
+                }
+            ]
         }
     ],
     "actions": [
@@ -144,6 +166,13 @@
         {
             "name": "rammarket",
             "type": "exchange_state",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "userres",
+            "type": "user_resources",
             "index_type": "i64",
             "key_names": [],
             "key_types": []

@@ -57,6 +57,33 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 }
 
 // @user
+[[eosio::on_notify("*::ramtransfer")]] void
+drops::on_ramtransfer(const name from, const name to, const int64_t bytes, const string memo)
+{
+   // ignore transfers not sent to this contract
+   if (to != get_self()) {
+      return;
+   }
+
+   // validate incoming token transfer
+   check(get_first_receiver() == "eosio"_n, "Only the eosio contract may send RAM to this contract.");
+   check(!memo.empty(), ERROR_INVALID_MEMO);
+   check_is_enabled(get_self());
+
+   // validate memo
+   const name receiver = utils::parse_name(memo);
+   check(receiver.value, ERROR_INVALID_MEMO); // ensure receiver is not empty & valid Name type
+   check(is_account(receiver), ERROR_ACCOUNT_NOT_EXISTS);
+
+   if (FLAG_FORCE_RECEIVER_TO_BE_SENDER) {
+      check(receiver == from, "Receiver must be the same as the sender.");
+   }
+
+   // contract purchase bytes and credit to receiver
+   add_ram_bytes(receiver, bytes);
+}
+
+// @user
 [[eosio::action]] drops::generate_return_value drops::generate(const name             owner,
                                                                const bool             bound,
                                                                const uint32_t         amount,
