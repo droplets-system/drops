@@ -63,6 +63,32 @@ icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897
 
 {{owner}} agrees to unbind {{droplet_ids}} drops(s).
 
+<h1 class="contract">lock</h1>
+
+---
+
+spec_version: "0.2.0"
+title: lock
+summary: 'Lock Drop(s)'
+icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
+
+---
+
+{{owner}} agrees to lock {{droplet_ids}} drops(s).
+
+<h1 class="contract">unlock</h1>
+
+---
+
+spec_version: "0.2.0"
+title: unlock
+summary: 'Unlock Drop(s)'
+icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
+
+---
+
+{{owner}} agrees to unlock {{droplet_ids}} drops(s).
+
 <h1 class="contract">generate</h1>
 
 ---
