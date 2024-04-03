@@ -178,6 +178,10 @@ public:
                                                   const optional<name>   to_notify);
 
    // @user
+   [[eosio::action]] void
+   burn(const name owner, const vector<uint64_t> droplet_ids, const string memo, const optional<name> to_notify);
+
+   // @user
    [[eosio::action]] int64_t bind(const name owner, const vector<uint64_t> droplet_ids);
 
    // @user
@@ -249,6 +253,14 @@ public:
                                      const optional<name>   to_notify);
 
    // @logging
+   [[eosio::action]] void logburn(const name             owner,
+                                  const vector<drop_row> drops,
+                                  const int64_t          droplets_burned,
+                                  const int64_t          bytes_burned,
+                                  const optional<string> memo,
+                                  const optional<name>   to_notify);
+
+   // @logging
    [[eosio::action]] void loggenerate(const name             owner,
                                       const vector<drop_row> drops,
                                       const int64_t          generated,
@@ -283,6 +295,7 @@ public:
    using logrambytes_action = eosio::action_wrapper<"logrambytes"_n, &drops::logrambytes>;
    using logdrops_action    = eosio::action_wrapper<"logdrops"_n, &drops::logdrops>;
    using logdestroy_action  = eosio::action_wrapper<"logdestroy"_n, &drops::logdestroy>;
+   using logburn_action     = eosio::action_wrapper<"logburn"_n, &drops::logburn>;
    using loggenerate_action = eosio::action_wrapper<"loggenerate"_n, &drops::loggenerate>;
 
 // DEBUG (used to help testing)
@@ -301,6 +314,7 @@ private:
    // helpers
    void transfer_tokens(const name to, const asset quantity, const string memo);
    void transfer_ram(const name to, const int64_t bytes, const string memo);
+   void burn_ram(const int64_t bytes, const string memo);
    void buy_ram_bytes(int64_t bytes);
    void sell_ram_bytes(int64_t bytes);
    void buy_ram(const asset quantity);

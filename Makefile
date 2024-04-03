@@ -7,7 +7,7 @@ MAINNET_ACCOUNT_NAME = drops
 TESTNET_NODE_URL = https://jungle4.greymass.com
 TESTNET_ACCOUNT_NAME = drops
 DEVNET_NODE_URL = https://jungle4.greymass.com
-DEVNET_ACCOUNT_NAME = seeds.gm
+DEVNET_ACCOUNT_NAME = drops2.gm
 CONTRACT_NAME = drops
 
 build: | build/dir
@@ -19,6 +19,9 @@ build/debug: | build/dir
 build/production: | build/dir
 	cdt-cpp -abigen -abigen_output=build/${CONTRACT_NAME}.abi -o build/${CONTRACT_NAME}.wasm src/drops.cpp -R src -I include
 
+build/system:
+	cdt-cpp -o include/eosio.system/eosio.wasm include/eosio.system/eosio.cpp -R src -I include
+
 build/dir:
 	mkdir -p build
 
@@ -29,7 +32,7 @@ devnet: build/debug
 	cleos -u $(DEVNET_NODE_URL) set contract $(DEVNET_ACCOUNT_NAME) \
 		build/ ${CONTRACT_NAME}.wasm ${CONTRACT_NAME}.abi
 
-testnet: build/production
+testnet: build/debug
 	cleos -u $(TESTNET_NODE_URL) set contract $(TESTNET_ACCOUNT_NAME) \
 		build/ ${CONTRACT_NAME}.wasm ${CONTRACT_NAME}.abi
 
@@ -109,5 +112,5 @@ testnet/enable:
 .PHONY: testnet/wipe
 testnet/wipe:
 	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "balances"}' -p $(TESTNET_ACCOUNT_NAME)@active
-	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "drop"}' -p $(TESTNET_ACCOUNT_NAME)@active
+	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "drop", "max_rows": 5000}' -p $(TESTNET_ACCOUNT_NAME)@active
 	cleos -u $(TESTNET_NODE_URL) push action $(TESTNET_ACCOUNT_NAME) cleartable '{"table_name": "state"}' -p $(TESTNET_ACCOUNT_NAME)@active

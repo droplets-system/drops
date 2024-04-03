@@ -37,6 +37,26 @@ icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897
 {{#if_has_value to_notify}}There is a notification to be sent to {{to_notify}}.
 {{/if_has_value}}
 
+<h1 class="contract">burn</h1>
+
+---
+
+spec_version: "0.2.0"
+title: burn
+summary: 'Burn Drop(s)'
+icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
+
+---
+
+{{owner}} agrees to destroy and burn the underlying RAM for {{droplet_ids}} drops(s).
+
+{{#if memo}}There is a memo attached to the transfer stating:
+{{memo}}
+{{/if}}
+
+{{#if_has_value to_notify}}There is a notification to be sent to {{to_notify}}.
+{{/if_has_value}}
+
 <h1 class="contract">bind</h1>
 
 ---
@@ -167,6 +187,17 @@ icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897
 spec_version: "0.2.0"
 title: logdestroy
 summary: logdestroy
+icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
+
+---
+
+<h1 class="contract">logburn</h1>
+
+---
+
+spec_version: "0.2.0"
+title: logburn
+summary: logburn
 icon: https://avatars.githubusercontent.com/u/158113782#d3bf290fddeddbb7d32aa897e9f7e9e13a2ae44956142e23eb47b77096a2ea8d
 
 ---

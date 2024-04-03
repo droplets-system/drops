@@ -352,6 +352,33 @@ drops::drop_row drops::destroy_drop(const uint64_t drop_id, const name owner)
 }
 
 // @user
+[[eosio::action]] void
+drops::burn(const name owner, const vector<uint64_t> droplet_ids, const string memo, const optional<name> to_notify)
+{
+   require_auth(owner);
+
+   check_is_enabled(get_self());
+   const int64_t amount = droplet_ids.size();
+   check(amount > 0, ERROR_NO_DROPS);
+   reduce_drops(owner, amount);
+
+   vector<drop_row> drops;
+   for (const uint64_t drop_id : droplet_ids) {
+      const drop_row drop = destroy_drop(drop_id, owner);
+      check(drop.bound == false, "Drop " + to_string(drop.seed) + " is bound and cannot be burned.");
+      drops.push_back(drop);
+   }
+
+   const int64_t bytes_to_burn = droplet_ids.size() * get_bytes_per_drop();
+   reduce_ram_bytes(get_self(), bytes_to_burn);
+   burn_ram(bytes_to_burn, memo);
+
+   // logging
+   drops::logburn_action logburn_act{get_self(), {get_self(), "active"_n}};
+   logburn_act.send(owner, to_notify ? drops : vector<drop_row>(), drops.size(), bytes_to_burn, memo, to_notify);
+}
+
+// @user
 [[eosio::action]] bool drops::open(const name owner)
 {
    require_auth(owner);

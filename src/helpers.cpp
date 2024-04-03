@@ -30,6 +30,12 @@ void drops::transfer_ram(const name to, const int64_t bytes, const string memo)
    ramtransfer.send(get_self(), to, bytes, memo);
 }
 
+void drops::burn_ram(const int64_t bytes, const string memo)
+{
+   eosiosystem::system_contract::ramburn_action ramburn{"eosio"_n, {get_self(), "active"_n}};
+   ramburn.send(get_self(), bytes, memo);
+}
+
 void drops::log_ram_bytes(const name    owner,
                           const int64_t bytes,
                           const int64_t before_ram_bytes,
@@ -64,6 +70,18 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
                                          const int64_t          bytes_reclaimed,
                                          const optional<string> memo,
                                          const optional<name>   to_notify)
+{
+   require_auth(get_self());
+   notify(owner);
+   notify(to_notify);
+}
+
+[[eosio::action]] void drops::logburn(const name             owner,
+                                      const vector<drop_row> drops,
+                                      const int64_t          droplets_burned,
+                                      const int64_t          bytes_burned,
+                                      const optional<string> memo,
+                                      const optional<name>   to_notify)
 {
    require_auth(get_self());
    notify(owner);
