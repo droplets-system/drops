@@ -208,6 +208,7 @@ void drops::modify_owner(const uint64_t drop_id, const name current_owner, const
    auto& drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
    check_drop_owner(drop, current_owner);
    check_drop_bound(drop, false);
+   check_drop_locked(drop);
 
    // Modify owner
    drops.modify(drop, same_payer, [&](auto& row) {
@@ -226,6 +227,7 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const boo
    const name ram_payer = bound ? owner : get_self();
    check_drop_owner(drop, owner);
    check_drop_bound(drop, !bound);
+   check_drop_locked(drop);
 
    // Modify RAM payer
    drops.modify(drop, ram_payer, [&](auto& row) {
@@ -274,6 +276,54 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const boo
       modify_ram_payer(drop_id, owner, false);
    }
    return bytes;
+}
+
+// @user
+[[eosio::action]] void drops::lock(const name owner, const vector<uint64_t> droplet_ids)
+{
+   require_auth(owner);
+   check_is_enabled(get_self());
+   check(droplet_ids.size() > 0, ERROR_NO_DROPS);
+
+   for (const uint64_t drop_id : droplet_ids) {
+      modify_locked(drop_id, owner, true);
+   }
+}
+
+// @user
+[[eosio::action]] void drops::unlock(const name owner, const vector<uint64_t> droplet_ids)
+{
+   require_auth(owner);
+   check_is_enabled(get_self());
+   check(droplet_ids.size() > 0, ERROR_NO_DROPS);
+
+   for (const uint64_t drop_id : droplet_ids) {
+      modify_locked(drop_id, owner, false);
+   }
+}
+
+void drops::modify_locked(const uint64_t drop_id, const name owner, const bool locked)
+{
+   drops::drop_table drops(get_self(), get_self().value);
+   auto&             drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+   check_drop_owner(drop, owner);
+
+   drops::lock_table locks(get_self(), get_self().value);
+   auto              lock = locks.find(drop_id);
+
+   if (locked) {
+      check(lock == locks.end(), "Drop " + to_string(drop.seed) + " is already locked.");
+      locks.emplace(owner, [&](auto& row) { row.seed = drop_id; });
+   } else {
+      check(lock != locks.end(), "Drop " + to_string(drop.seed) + " is not locked.");
+      locks.erase(lock);
+   }
+}
+
+void drops::check_drop_locked(const drop_row drop)
+{
+   drops::lock_table locks(get_self(), get_self().value);
+   check(locks.find(drop.seed) == locks.end(), "Drop " + to_string(drop.seed) + " is locked.");
 }
 
 void drops::check_drop_bound(const drop_row drop, const bool bound)
@@ -342,6 +392,7 @@ drops::drop_row drops::destroy_drop(const uint64_t drop_id, const name owner)
 
    auto& drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
    check_drop_owner(drop, owner);
+   check_drop_locked(drop);
    const bool bound = drop.bound;
 
    // Destroy the drops

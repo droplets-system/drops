@@ -72,6 +72,27 @@ public:
    };
 
    /**
+    * ## TABLE `lock`
+    *
+    * ### params
+    *
+    * - `{uint64_t} seed` - (primary key) unique seed
+    *
+    * ### example
+    *
+    * ```json
+    * {
+    *   "seed": 16355392114041409,
+    * }
+    * ```
+    */
+   struct [[eosio::table("lock")]] lock_row
+   {
+      uint64_t seed;
+      uint64_t primary_key() const { return seed; }
+   };
+
+   /**
     * ## TABLE `state`
     *
     * ### params
@@ -136,6 +157,7 @@ public:
                                                           drop_table;
    typedef eosio::singleton<"state"_n, state_row>         state_table;
    typedef eosio::multi_index<"balances"_n, balances_row> balances_table;
+   typedef eosio::multi_index<"lock"_n, lock_row>         lock_table;
 
    // @return
    struct generate_return_value
@@ -182,6 +204,12 @@ public:
 
    // @user
    [[eosio::action]] int64_t unbind(const name owner, const vector<uint64_t> droplet_ids);
+
+   // @user
+   [[eosio::action]] void lock(const name owner, const vector<uint64_t> droplet_ids);
+
+   // @user
+   [[eosio::action]] void unlock(const name owner, const vector<uint64_t> droplet_ids);
 
    /**
     * ## ACTION `open`
@@ -305,6 +333,8 @@ private:
    void sell_ram_bytes(int64_t bytes);
    void buy_ram(const asset quantity);
    void notify(const optional<name> to_notify);
+   void check_drop_locked(const drop_row drop);
+   void modify_locked(const uint64_t drop_id, const name owner, const bool locked);
 
    // ram balances helpers
    int64_t update_ram_bytes(const name owner, const int64_t bytes);
