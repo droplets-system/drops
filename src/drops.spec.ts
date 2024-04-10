@@ -1,10 +1,11 @@
-import {Asset, Name} from '@wharfkit/antelope'
+import {Asset, Int64, Name} from '@wharfkit/antelope'
 import {TimePointSec} from '@greymass/eosio'
 import {Blockchain, expectToThrow} from '@proton/vert'
 import {beforeEach, describe, expect, test} from 'bun:test'
 
 import * as DropsContract from '../build/drops.ts'
 import * as TokenContract from '../codegen/eosio.token.ts'
+import * as SystemContract from '../codegen/eosio.ts'
 import {toHash, toSeed} from './drops.ts'
 
 // Vert EOS VM
@@ -66,6 +67,15 @@ function getDrops(owner?: string): DropsContract.Types.drop_row[] {
     return rows.filter((row) => row.owner === owner)
 }
 
+function getRamBytes(account: string) {
+    const scope = Name.from(account).value.value
+    const row = contracts.system.tables
+        .userres(scope)
+        .getTableRow(scope) as SystemContract.Types.user_resources
+    if (!row) return 0
+    return Int64.from(row.ram_bytes).toNumber()
+}
+
 // standard error messages
 const ERROR_INVALID_MEMO = `eosio_assert_message: Invalid transfer memo. (ex: "<receiver>")`
 const ERROR_DROP_NOT_FOUND = 'eosio_assert: Drop not found.'
@@ -92,6 +102,20 @@ describe(core_contract, () => {
         await contracts.token.actions.transfer(['eosio.token', bob, '1000.0000 EOS', '']).send()
         await contracts.token.actions.transfer(['eosio.token', alice, '1000.0000 EOS', '']).send()
         await contracts.token.actions.transfer(['eosio.token', charles, '1000.0000 EOS', '']).send()
+    })
+
+    test('eosio::buyrambytes', async () => {
+        const before = getRamBytes(alice)
+        await contracts.system.actions.buyrambytes([alice, alice, 10000]).send()
+        const after = getRamBytes(alice)
+        expect(after - before).toBe(10000)
+    })
+
+    test('eosio::ramtransfer', async () => {
+        const before = getRamBytes(bob)
+        await contracts.system.actions.ramtransfer([alice, bob, 5000, '']).send()
+        const after = getRamBytes(bob)
+        expect(after - before).toBe(5000)
     })
 
     test('fake.token::issue', async () => {
@@ -140,11 +164,18 @@ describe(core_contract, () => {
 
         // logging
         const logrambytes = DropsContract.Types.logrambytes.from(
-            blockchain.actionTraces[3].decodedData
+            blockchain.actionTraces[4].decodedData
         )
         expect(logrambytes.ram_bytes.toNumber()).toEqual(87550)
         expect(logrambytes.before_ram_bytes.toNumber()).toEqual(0)
         expect(logrambytes.bytes.toNumber()).toEqual(87550)
+    })
+
+    test('on_notify::ramtransfer', async () => {
+        const before = Int64.from(getBalance(core_contract).ram_bytes).toNumber()
+        await contracts.system.actions.ramtransfer([alice, core_contract, 277, alice]).send()
+        const after = Int64.from(getBalance(core_contract).ram_bytes).toNumber()
+        expect(after - before).toBe(277)
     })
 
     test('on_transfer::error - contract disabled', async () => {

@@ -62,8 +62,8 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
                                          const int64_t          destroyed,
                                          const int64_t          unbound_destroyed,
                                          const int64_t          bytes_reclaimed,
-                                         optional<string>       memo,
-                                         optional<name>         to_notify)
+                                         const optional<string> memo,
+                                         const optional<name>   to_notify)
 {
    require_auth(get_self());
    notify(owner);
@@ -76,7 +76,8 @@ void drops::logdrops(const name owner, const int64_t amount, const int64_t befor
                                           const int64_t          bytes_used,
                                           const int64_t          bytes_balance,
                                           const string           data,
-                                          optional<name>         to_notify)
+                                          const optional<name>   to_notify,
+                                          const optional<string> memo)
 {
    require_auth(get_self());
    notify(owner);

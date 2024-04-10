@@ -2,6 +2,7 @@
 
 #include "helpers.cpp"
 #include "ram.cpp"
+#include "read_only.cpp"
 #include "utils.cpp"
 
 // DEBUG (used to help testing)
@@ -56,18 +57,53 @@ drops::on_transfer(const name from, const name to, const asset quantity, const s
 }
 
 // @user
-[[eosio::action]] drops::generate_return_value drops::generate(
-   const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
+[[eosio::on_notify("*::ramtransfer")]] void
+drops::on_ramtransfer(const name from, const name to, const int64_t bytes, const string memo)
+{
+   // ignore transfers not sent to this contract
+   if (to != get_self()) {
+      return;
+   }
+
+   // validate incoming token transfer
+   check(get_first_receiver() == "eosio"_n, "Only the eosio contract may send RAM to this contract.");
+   check(!memo.empty(), ERROR_INVALID_MEMO);
+   check_is_enabled(get_self());
+
+   // validate memo
+   const name receiver = utils::parse_name(memo);
+   check(receiver.value, ERROR_INVALID_MEMO); // ensure receiver is not empty & valid Name type
+   check(is_account(receiver), ERROR_ACCOUNT_NOT_EXISTS);
+
+   if (FLAG_FORCE_RECEIVER_TO_BE_SENDER) {
+      check(receiver == from, "Receiver must be the same as the sender.");
+   }
+
+   // contract purchase bytes and credit to receiver
+   add_ram_bytes(receiver, bytes);
+}
+
+// @user
+[[eosio::action]] drops::generate_return_value drops::generate(const name             owner,
+                                                               const bool             bound,
+                                                               const uint32_t         amount,
+                                                               const string           data,
+                                                               const optional<name>   to_notify,
+                                                               const optional<string> memo)
 {
    require_auth(owner);
    check_is_enabled(get_self());
    check(owner != get_self(), "Cannot generate drops for contract.");
    open_balance(owner, owner);
-   return emplace_drops(owner, bound, amount, data, to_notify);
+   return emplace_drops(owner, bound, amount, data, to_notify, memo);
 }
 
-drops::generate_return_value drops::emplace_drops(
-   const name owner, const bool bound, const uint32_t amount, const string data, const optional<name> to_notify)
+drops::generate_return_value drops::emplace_drops(const name             owner,
+                                                  const bool             bound,
+                                                  const uint32_t         amount,
+                                                  const string           data,
+                                                  const optional<name>   to_notify,
+                                                  const optional<string> memo)
 {
    drop_table _drops(get_self(), get_self().value);
 
@@ -125,7 +161,7 @@ drops::generate_return_value drops::emplace_drops(
    // logging
    drops::loggenerate_action loggenerate_act{get_self(), {get_self(), "active"_n}};
    loggenerate_act.send(owner, to_notify ? drops : vector<drop_row>(), drops.size(), bytes_used, bytes_balance, data,
-                        to_notify);
+                        to_notify, memo);
 
    // action return value
    return {bytes_used, bytes_balance};
@@ -142,7 +178,7 @@ uint64_t drops::hash_data(const string data)
 
 // @user
 [[eosio::action]] void
-drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids, const optional<string> memo)
+drops::transfer(const name from, const name to, const vector<uint64_t> droplet_ids, const optional<string> memo)
 {
    require_auth(from);
    check_is_enabled(get_self());
@@ -150,7 +186,7 @@ drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids
    check(is_account(to), ERROR_ACCOUNT_NOT_EXISTS);
    check(to != from, "Cannot transfer to self.");
    check(to != get_self(), "Cannot transfer to contract.");
-   const int64_t amount = drops_ids.size();
+   const int64_t amount = droplet_ids.size();
    check(amount > 0, ERROR_NO_DROPS);
    open_balance(to, from);
    transfer_drops(from, to, amount);
@@ -159,7 +195,7 @@ drops::transfer(const name from, const name to, const vector<uint64_t> drops_ids
    require_recipient(to);
 
    // Iterate over all drops selected to be transferred
-   for (const uint64_t drop_id : drops_ids) {
+   for (const uint64_t drop_id : droplet_ids) {
       modify_owner(drop_id, from, to);
    }
 }
@@ -172,6 +208,7 @@ void drops::modify_owner(const uint64_t drop_id, const name current_owner, const
    auto& drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
    check_drop_owner(drop, current_owner);
    check_drop_bound(drop, false);
+   check_drop_locked(drop);
 
    // Modify owner
    drops.modify(drop, same_payer, [&](auto& row) {
@@ -190,6 +227,7 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const boo
    const name ram_payer = bound ? owner : get_self();
    check_drop_owner(drop, owner);
    check_drop_bound(drop, !bound);
+   check_drop_locked(drop);
 
    // Modify RAM payer
    drops.modify(drop, ram_payer, [&](auto& row) {
@@ -205,39 +243,87 @@ void drops::modify_ram_payer(const uint64_t drop_id, const name owner, const boo
 }
 
 // @user
-[[eosio::action]] int64_t drops::bind(const name owner, const vector<uint64_t> drops_ids)
+[[eosio::action]] int64_t drops::bind(const name owner, const vector<uint64_t> droplet_ids)
 {
    require_auth(owner);
    check_is_enabled(get_self());
-   check(drops_ids.size() > 0, ERROR_NO_DROPS);
+   check(droplet_ids.size() > 0, ERROR_NO_DROPS);
 
    // binding drops releases RAM to the owner
-   const int64_t bytes = drops_ids.size() * get_bytes_per_drop();
+   const int64_t bytes = droplet_ids.size() * get_bytes_per_drop();
    add_ram_bytes(owner, bytes);
 
    // Modify the RAM payer for the selected drops
-   for (const uint64_t drop_id : drops_ids) {
+   for (const uint64_t drop_id : droplet_ids) {
       modify_ram_payer(drop_id, owner, true);
    }
    return bytes;
 }
 
 // @user
-[[eosio::action]] int64_t drops::unbind(const name owner, const vector<uint64_t> drops_ids)
+[[eosio::action]] int64_t drops::unbind(const name owner, const vector<uint64_t> droplet_ids)
 {
    require_auth(owner);
    check_is_enabled(get_self());
-   check(drops_ids.size() > 0, ERROR_NO_DROPS);
+   check(droplet_ids.size() > 0, ERROR_NO_DROPS);
 
    // unbinding drops requires the owner to pay for the RAM
-   const int64_t bytes = drops_ids.size() * get_bytes_per_drop();
+   const int64_t bytes = droplet_ids.size() * get_bytes_per_drop();
    reduce_ram_bytes(owner, bytes);
 
    // Modify RAM payer for the selected drops
-   for (const uint64_t drop_id : drops_ids) {
+   for (const uint64_t drop_id : droplet_ids) {
       modify_ram_payer(drop_id, owner, false);
    }
    return bytes;
+}
+
+// @user
+[[eosio::action]] void drops::lock(const name owner, const vector<uint64_t> droplet_ids)
+{
+   require_auth(owner);
+   check_is_enabled(get_self());
+   check(droplet_ids.size() > 0, ERROR_NO_DROPS);
+
+   for (const uint64_t drop_id : droplet_ids) {
+      modify_locked(drop_id, owner, true);
+   }
+}
+
+// @user
+[[eosio::action]] void drops::unlock(const name owner, const vector<uint64_t> droplet_ids)
+{
+   require_auth(owner);
+   check_is_enabled(get_self());
+   check(droplet_ids.size() > 0, ERROR_NO_DROPS);
+
+   for (const uint64_t drop_id : droplet_ids) {
+      modify_locked(drop_id, owner, false);
+   }
+}
+
+void drops::modify_locked(const uint64_t drop_id, const name owner, const bool locked)
+{
+   drops::drop_table drops(get_self(), get_self().value);
+   auto&             drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
+   check_drop_owner(drop, owner);
+
+   drops::lock_table locks(get_self(), get_self().value);
+   auto              lock = locks.find(drop_id);
+
+   if (locked) {
+      check(lock == locks.end(), "Drop " + to_string(drop.seed) + " is already locked.");
+      locks.emplace(owner, [&](auto& row) { row.seed = drop_id; });
+   } else {
+      check(lock != locks.end(), "Drop " + to_string(drop.seed) + " is not locked.");
+      locks.erase(lock);
+   }
+}
+
+void drops::check_drop_locked(const drop_row drop)
+{
+   drops::lock_table locks(get_self(), get_self().value);
+   check(locks.find(drop.seed) == locks.end(), "Drop " + to_string(drop.seed) + " is locked.");
 }
 
 void drops::check_drop_bound(const drop_row drop, const bool bound)
@@ -262,21 +348,21 @@ void drops::notify(const optional<name> to_notify)
 
 // @user
 [[eosio::action]] drops::destroy_return_value drops::destroy(const name             owner,
-                                                             const vector<uint64_t> drops_ids,
+                                                             const vector<uint64_t> droplet_ids,
                                                              const optional<string> memo,
                                                              const optional<name>   to_notify)
 {
    require_auth(owner);
 
    check_is_enabled(get_self());
-   const int64_t amount = drops_ids.size();
+   const int64_t amount = droplet_ids.size();
    check(amount > 0, ERROR_NO_DROPS);
    reduce_drops(owner, amount);
 
    // The number of bound drops that were destroyed
    int64_t          unbound_destroyed = 0;
    vector<drop_row> drops;
-   for (const uint64_t drop_id : drops_ids) {
+   for (const uint64_t drop_id : droplet_ids) {
       // Count the number of "bound=false" drops destroyed
       const drop_row drop = destroy_drop(drop_id, owner);
       if (drop.bound == false) {
@@ -306,6 +392,7 @@ drops::drop_row drops::destroy_drop(const uint64_t drop_id, const name owner)
 
    auto& drop = drops.get(drop_id, ERROR_DROP_NOT_FOUND.c_str());
    check_drop_owner(drop, owner);
+   check_drop_locked(drop);
    const bool bound = drop.bound;
 
    // Destroy the drops
