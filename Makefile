@@ -4,6 +4,10 @@ BIN := ./node_modules/.bin
 
 MAINNET_NODE_URL = https://eos.greymass.com
 MAINNET_ACCOUNT_NAME = drops
+MAINNET_MSIG_PROPOSER = jesta.x
+MAINNET_MSIG_PERMISSION = jesta.x@msigpropose
+MAINNET_MSIG_PROPOSAL = dropsupdate
+MAINNET_MSIG_SIGNERS = '[{"actor":"aus1genereos","permission":"active"},{"actor":"eosnationftw","permission":"active"},{"actor":"eosphereiobp","permission":"active"},{"actor":"eostitanprod","permission":"active"},{"actor":"teamgreymass","permission":"active"}]'
 TESTNET_NODE_URL = https://jungle4.greymass.com
 TESTNET_ACCOUNT_NAME = drops
 DEVNET_NODE_URL = https://jungle4.greymass.com
@@ -34,8 +38,11 @@ testnet: build/production
 		build/ ${CONTRACT_NAME}.wasm ${CONTRACT_NAME}.abi
 
 mainnet: build/production
-	cleos -u $(MAINNET_NODE_URL) set contract $(MAINNET_ACCOUNT_NAME) \
-		build/ ${CONTRACT_NAME}.wasm ${CONTRACT_NAME}.abi
+	cleos -u $(MAINNET_NODE_URL) set contract \
+		--dont-broadcast --skip-sign --expiration 259200 --json-file msig.json \
+		${MAINNET_ACCOUNT_NAME} build/ ${CONTRACT_NAME}.wasm ${CONTRACT_NAME}.abi
+	cleos -u $(MAINNET_NODE_URL) multisig propose_trx ${MAINNET_MSIG_PROPOSAL} ${MAINNET_MSIG_SIGNERS} \
+		msig.json ${MAINNET_MSIG_PROPOSER} -p ${MAINNET_MSIG_PERMISSION}
 
 .PHONY: test
 test: build/debug node_modules build/drops.ts init/codegen
